@@ -12,5 +12,5 @@ parser.add_argument('--user')
 arguments = parser.parse_args()
 
 
-def run():
-    talk.server.client.open(arguments.host, arguments.port, arguments.user)
+def run() -> None:
+    talk.server.client.open(arguments.host, arguments.port)

@@ -5,19 +5,19 @@ description = "\"Talk\" Messanger Server"
 readme = "README.md"
 authors = ["Martynov Alexandr <triplustr@mail.ru>"]
 packages = [
-    {include = "talk"}
+    {include = "talk"},
 ]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.12"
 loguru = "^0.6.0"
-msgspec = "^0.14.0"
+msgspec = { git = "https://github.com/jcrist/msgspec.git", tag = "0.17.0" }
 aioconsole = "^0.6.1"
 typing-extensions = "^4.5.0"
 
 [tool.poetry.scripts]
-talk-server = 'talk.server.script.server:run'
-talk-client = 'talk.server.script.client:run'
+talk-server = 'talk.server.entrypoint.server:run'
+talk-client = 'talk.server.entrypoint.client:run'
 
 [build-system]
 requires = ["poetry-core"]

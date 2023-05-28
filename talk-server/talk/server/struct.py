@@ -1,8 +1,10 @@
 import enum
 from time import time
-from uuid import uuid4
-from msgspec import Struct, field, UNSET, UnsetType as Unset
-import msgspec
+from uuid import uuid4, UUID
+from msgspec import Struct, field, json, UNSET, UnsetType as Unset
+
+
+EOM = b'\0'
 
 
 class Media(Struct, kw_only=True):
@@ -11,7 +13,7 @@ class Media(Struct, kw_only=True):
 
 
 class Element(Struct, kw_only=True):
-    id: str = field(default_factory=uuid4)
+    id: UUID = field(default_factory=uuid4)
     time: float = field(default_factory=time)
     sender: str
     receiver: str
@@ -23,7 +25,6 @@ class Message(Element, kw_only=True, tag=True):
 
 
 class Identity(Element, kw_only=True, tag=True):
-    session: str
     password: str
 
 
@@ -37,7 +38,7 @@ class Status(Element, kw_only=True, tag=True):
         READED = enum.auto()
 
     value: Value
-    message_id: str
+    message_id: UUID
 
 
 def status(message: Message, value: Status.Value) -> Status:
@@ -49,16 +50,16 @@ def status(message: Message, value: Status.Value) -> Status:
 
 
 def decode(data: bytes) -> Element:
-    if data[-1:] == b'\0':
+    if data[-1:] == EOM:
         data = data[:-1]
 
-    return msgspec.json.decode(data, type=Message | Identity | Heartbeat | Status)
+    return json.decode(data, type=Message | Identity | Heartbeat | Status)
 
 
-def encode(message: Message, terminate: bool = True) -> bytes:
-    data = msgspec.json.encode(message)
+def encode(message: Element, terminate: bool = True) -> bytes:
+    data = json.encode(message)
 
     if terminate:
-        data += b'\0'
+        data += EOM
 
     return data
