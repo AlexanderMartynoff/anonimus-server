@@ -1,10 +1,8 @@
+from __future__ import annotations
 import enum
 from time import time
 from uuid import uuid4, UUID
-from msgspec import Struct, field, json, UNSET, UnsetType as Unset
-
-
-EOM = b'\0'
+from msgspec import Struct, field, UNSET, UnsetType as Unset
 
 
 class Media(Struct, kw_only=True):
@@ -28,8 +26,14 @@ class Identity(Element, kw_only=True, tag=True):
     password: str
 
 
-class Heartbeat(Element, kw_only=True, tag=True):
-    pass
+class Ping(Element, kw_only=True, tag=True):
+    def reverse(self) -> Pong:
+        return Pong(sender=self.receiver, receiver=self.sender)
+
+
+class Pong(Element, kw_only=True, tag=True):
+    def reverse(self) -> Ping:
+        return Ping(sender=self.receiver, receiver=self.sender)
 
 
 class Status(Element, kw_only=True, tag=True):
@@ -47,19 +51,3 @@ def status(message: Message, value: Status.Value) -> Status:
         receiver=message.sender,
         message_id=message.id,
         value=value)
-
-
-def decode(data: bytes) -> Element:
-    if data[-1:] == EOM:
-        data = data[:-1]
-
-    return json.decode(data, type=Message | Identity | Heartbeat | Status)
-
-
-def encode(message: Element, terminate: bool = True) -> bytes:
-    data = json.encode(message)
-
-    if terminate:
-        data += EOM
-
-    return data

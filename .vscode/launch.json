@@ -1,0 +1,12 @@
+{
+    "configurations": [
+        {
+            "name": "Server",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}/../../talk-server/.venv/bin/talk-server",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ]
+}
