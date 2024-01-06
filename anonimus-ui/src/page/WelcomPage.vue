@@ -1,63 +1,48 @@
 <template>
-  <n-layout content-class="flex flex-align-items-center flex-justify-content-center">
-    <n-space vertical justify="center">
-      <n-card title="Anonumus chat" hoverable>
-        Here you can chat with new people one-on-one without registration or SMS, completely anonymously!
-        <template #footer>
-          <n-button type="primary" @click="onBtnClick">
-            <template #icon>
-              <n-icon>
-                <play-circle-filled-white-outlined/>
-              </n-icon>
-            </template>
-            Run
-          </n-button>
-        </template>
-      </n-card>
-      <n-card title="Topics" hoverable>
-        <n-space>
-          <n-button :type="topic.type" v-for="topic in topics" @click="onTopicBtnClick(topic)">
-            {{topic.title}}
-          </n-button>
-        </n-space>
-      </n-card>
-    </n-space>
-  </n-layout>
+  <div>
+    <q-layout view="hHh lpr fFf">
+      <q-header elevated>
+        <q-toolbar>
+          <q-toolbar-title>
+            Anonimus
+          </q-toolbar-title>
+        </q-toolbar>
+      </q-header>
+
+      <q-page-container>
+        <q-page class="column flex-center">
+          <div class="q-pa-md">
+            <q-carousel v-model="slide" transition-prev="scale" transition-next="scale" swipeable animated navigation
+              padding arrows class="bg-primary text-white">
+              <q-carousel-slide name="style" class="column no-wrap flex-center">
+                <q-icon name="style" size="56px" />
+                <div class="q-mt-md text-center">
+                  {{ lorem }}
+                </div>
+              </q-carousel-slide>
+              <q-carousel-slide name="tv" class="column no-wrap flex-center">
+                <q-icon name="live_tv" size="56px" />
+                <div class="q-mt-md text-center">
+                  {{ lorem }}
+                </div>
+              </q-carousel-slide>
+            </q-carousel>
+          </div>
+        </q-page>
+      </q-page-container>
+    </q-layout>
+  </div>
 </template>
 
 <script>
-import { reactive } from 'vue'
-import { useRouter } from 'vue-router'
-import { PlayCircleFilledWhiteOutlined } from '@vicons/material'
+import { ref } from 'vue'
 
 export default {
   name: 'WelcomPage',
-
-  components: {
-    PlayCircleFilledWhiteOutlined,
-  },
-
-  setup() {
-    const router = useRouter()
-
-    const topics = reactive([
-      {type: 'default', title: 'Sara'},
-      {type: 'info', title: 'Sara'},
-      {type: 'success', title: 'Sara'},
-      {type: 'error', title: 'Sara'},
-      {type: 'warning', title: 'Sara'},
-    ])
-
+  setup(props) {
     return {
-      onBtnClick () {
-        router.push('/chat')
-      },
-
-      onTopicBtnClick (topic) {
-        topics.push(topic)
-      },
-
-      topics,
+      slide: ref('style'),
+      lorem: 'Lorem ipsum dolor, sit amet consectetur adipisicing elit. Itaque voluptatem totam, architecto cupiditate officia rerum, error dignissimos praesentium libero ab nemo.'
     }
   },
 }
