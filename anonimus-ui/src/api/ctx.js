@@ -1,0 +1,3 @@
+class Context {
+    websocket = null
+}

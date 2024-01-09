@@ -1,20 +1,38 @@
 from __future__ import annotations
-from aiohttp import web
+from aiohttp.web import WebSocketResponse, RouteTableDef, Request, AppKey
+from aiohttp import WSMsgType
+from msgspec.json import decode
+from .struct import Message, Identity, Element, Status
+from .api import Redis, Db
+from . import service
 
 
-routes = web.RouteTableDef()
+routes = RouteTableDef()
 
 
-@routes.get('/')
-async def index(request) -> web.Response:
-    return web.Response()
+@routes.get('/api/messanger/connect')
+async def connect(request: Request) -> WebSocketResponse:
+    stream = WebSocketResponse()
 
+    await stream.prepare(request)
 
-@routes.post('/message/send')
-async def send_message(request) -> web.Response:
-    return web.Response()
+    async for msg in stream:
+        if msg.type == WSMsgType.text:
+            print(msg.data)
+            try:
+                element = decode(msg.data, type=Identity | Message | Status)
+            except TypeError:
+                raise
 
+            match element:
+                case Identity():
+                    pass
+                case Status():
+                    pass
+                case Message():
+                    pass
 
-@routes.put('/session/close')
-async def close_session(request) -> web.Response:
-    return web.Response()
+        if msg.type == WSMsgType.error:
+            continue
+
+    return stream

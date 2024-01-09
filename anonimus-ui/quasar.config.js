@@ -29,7 +29,9 @@ module.exports = configure(function (ctx) {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-webpack/boot-files
-    boot: [],
+    boot: [
+      'websocket.js',
+    ],
 
     // https://v2.quasar.dev/quasar-cli-webpack/quasar-config-js#Property%3A-css
 
@@ -77,6 +79,13 @@ module.exports = configure(function (ctx) {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-webpack/quasar-config-js#Property%3A-devServer
     devServer: {
+      proxy: {
+        '/api': {
+           target: 'ws://localhost:9090',
+           ws: true,
+           changeOrigin: true,
+        },
+      },
       server: {
         type: 'http'
       },
