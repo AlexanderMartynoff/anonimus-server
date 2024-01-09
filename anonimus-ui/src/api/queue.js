@@ -33,9 +33,7 @@ export default class Queue {
 
       try {
         this.executer(element)
-      } catch (error) {
-        this.elements.push(element)
-      }
+      } catch (error) {}
     }
   }
 }

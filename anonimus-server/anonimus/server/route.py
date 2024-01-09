@@ -18,7 +18,6 @@ async def connect(request: Request) -> WebSocketResponse:
 
     async for msg in stream:
         if msg.type == WSMsgType.text:
-            print(msg.data)
             try:
                 element = decode(msg.data, type=Identity | Message | Status)
             except TypeError:
@@ -29,10 +28,11 @@ async def connect(request: Request) -> WebSocketResponse:
                     pass
                 case Status():
                     pass
-                case Message():
-                    pass
+                case Message(text=text):
+                    print(text)
 
         if msg.type == WSMsgType.error:
             continue
 
+    print('-----------------------')
     return stream

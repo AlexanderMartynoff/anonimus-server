@@ -6,7 +6,7 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 
 export default {
   name: 'MessangerMessageToolbar',
@@ -31,9 +31,13 @@ export default {
           return
         }
 
-        ctx.emit('send', {
-          text: text.value,
-        })
+        ctx.emit(
+          'send',
+          reactive({
+            type: 'Message',
+            text: text.value,
+          })
+        )
 
         text.value = null
       },

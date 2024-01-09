@@ -75,7 +75,7 @@ export default {
       websocket.off(chanelId)
     })
 
-    const queue = new Queue(message => {
+    const sender = new Queue(message => {
       websocket.send(message)
       messages.push(message)
     })
@@ -95,7 +95,7 @@ export default {
       },
 
       onBtnSendClick(message) {
-        queue.push(message)
+        sender.push(message)
       },
     }
   },

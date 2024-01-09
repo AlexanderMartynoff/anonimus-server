@@ -13,12 +13,12 @@ class Media(Struct, kw_only=True):
 class Element(Struct, kw_only=True):
     id: UUID = field(default_factory=uuid4)
     time: float = field(default_factory=time)
-    sender: str
-    receiver: str
+    sender: str | Unset = UNSET
+    receiver: str | Unset = UNSET
 
 
 class Message(Element, kw_only=True, tag=True):
-    value: str | Unset = UNSET
+    text: str | Unset = UNSET
     media: Media | Unset = UNSET
 
 
