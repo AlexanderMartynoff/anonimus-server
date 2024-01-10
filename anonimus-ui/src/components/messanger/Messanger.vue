@@ -31,7 +31,6 @@ import { ref, computed, inject, reactive, onMounted, onUnmounted } from 'vue'
 import MessangerChat from './MessangerChat.vue'
 import MessangerMessageToolbar from './MessangerMessageToolbar.vue'
 import MessangerContactList from './MessangerContactList.vue'
-import Queue from '../../api/queue.js'
 
 
 export default {
@@ -54,30 +53,25 @@ export default {
 
   setup(props) {
     const websocket = inject('websocket')
-    
+    const uuid = inject('uuid')
+
     const showLeftBar = ref(true)
     const leftBarWidth = computed(() => props.leftBarWidth)
     const leftBarBreakpoint = computed(() => props.leftBarBreakpoint)
 
     const messages = reactive([])
 
-    let chanelId = null
+    let chanel = null
 
     onMounted(() => {
-      chanelId = websocket.on({
-        tag: 'message'
-      }, (event) => {
-
+      chanel = websocket.subscribe({
+        type: 'Subscription',
+        id: uuid,
       })
     })
 
     onUnmounted(() => {
-      websocket.off(chanelId)
-    })
-
-    const sender = new Queue(message => {
-      websocket.send(message)
-      messages.push(message)
+      websocket.unsubscribe(chanel)
     })
 
     return {
@@ -95,7 +89,8 @@ export default {
       },
 
       onBtnSendClick(message) {
-        sender.push(message)
+        messages.push(message)
+        websocket.push(message)
       },
     }
   },

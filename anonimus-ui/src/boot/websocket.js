@@ -1,7 +1,12 @@
 import { boot } from 'quasar/wrappers'
-import { WebSocketService } from '../api/socket.js'
+import { WebSocketService } from '../api/websocket.js'
 
 
 export default boot(({ app }) => {
-    app.provide('websocket', new WebSocketService('ws://localhost:9090/api/messanger/connect'))
+    const service = new WebSocketService(
+        `ws://${location.host}/api/messanger/connect`,
+    )
+    service.watch()
+
+    app.provide('websocket', service)
 })

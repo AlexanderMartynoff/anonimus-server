@@ -1,6 +1,7 @@
 import argparse
 from aiohttp import web
 from anonimus.server.route import routes
+from anonimus.server import service
 
 
 parser = argparse.ArgumentParser()
@@ -12,7 +13,11 @@ arguments = parser.parse_args()
 
 
 def run() -> None:
-    appplication = web.Application()
-    appplication.add_routes(routes)
+    app = web.Application()
 
-    web.run_app(appplication, port=arguments.port)
+    app.on_startup.append(service.on_startup)
+    app.on_shutdown.append(service.on_shutdown)
+
+    app.add_routes(routes)
+
+    web.run_app(app, port=arguments.port)

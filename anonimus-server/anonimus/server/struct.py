@@ -18,12 +18,16 @@ class Element(Struct, kw_only=True):
 
 
 class Message(Element, kw_only=True, tag=True):
-    text: str | Unset = UNSET
+    text: str
     media: Media | Unset = UNSET
 
 
-class Identity(Element, kw_only=True, tag=True):
-    password: str
+class Handshke(Element, kw_only=True, tag=True):
+    secret: str
+
+
+class Subscription(Element, kw_only=True, tag=True):
+    pass
 
 
 class Ping(Element, kw_only=True, tag=True):
