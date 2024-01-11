@@ -22,8 +22,8 @@ class Message(Element, kw_only=True, tag=True):
     media: Media | Unset = UNSET
 
 
-class Handshke(Element, kw_only=True, tag=True):
-    secret: str
+class Registration(Element, kw_only=True, tag=True):
+    pass
 
 
 class Subscription(Element, kw_only=True, tag=True):

@@ -64,14 +64,14 @@ export default {
     let chanel = null
 
     onMounted(() => {
-      chanel = websocket.subscribe({
+      chanel = websocket.on({
         type: 'Subscription',
         id: uuid,
       })
     })
 
     onUnmounted(() => {
-      websocket.unsubscribe(chanel)
+      websocket.off(chanel)
     })
 
     return {

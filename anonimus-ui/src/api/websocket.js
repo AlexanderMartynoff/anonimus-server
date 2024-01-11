@@ -2,115 +2,116 @@ class WebSocketError extends Error {}
 class WebSocketOpenError extends WebSocketError {}
 
 
-class WebSocketService {
-  constructor(url) {
+class WebSocketQueue {
+  constructor(url, timeout = 1000) {
     this.url = url
+    this.timeout = timeout
+
     this.listeners = []
-    this.messages = []
+    this.queue = []
+    this.waiters = []
+
+    this.active = false
+
+    this.push({
+      type: 'Ping',
+    })
   }
 
-  get state () {
-    return this.socket ? this.socket.readyState : WebSocket.CLOSED
-  }
+  connect({ onOpen = () => {}, onError = () => {}, onClose = () => {} }) {
+    if (this.socket && this.socket.readyState != WebSocket.CLOSED) {
+      throw new WebSocketOpenError()
+    }
 
-  connect() {
     this.socket = new WebSocket(this.url)
 
-    this.socket.onopen = response => {
-      this.dispatch('open')
-    }
-
-    this.socket.onerror = error => {
-      console.log(error)
-      this.dispatch('error')
-    }
-
-    this.socket.onmessage = ({data}) => {
-      try {
-        this.receive(JSON.parse(data))
-      } catch (error) {
-        console.error(error)
-      }
-    }
-
-    this.socket.onclose = response => {
-      this.dispatch('onclose')
-    }
-  }
-
-  execute(onOpen, onError) {
-    this.on('open', () => {
+    this.socket.onopen = () => {
       onOpen()
-      this.off(onError)
-    })
+    }
 
-    this.on('error', () => {
+    this.socket.onerror = () => {
       onError()
-      this.off(onOpen)
-    })
+    }
 
-    if (this.state == WebSocket.CLOSED) {
-      this.connect()
-    } else if (this.state == WebSocket.OPEN) {
-      this.dispatch('open')
+    this.socket.onclose = () => {
+      onClose()
+    }
+
+    this.socket.onmessage = () => {
+      this.onMessage()
     }
   }
 
-  receive(message) {}
+  onMessage({ data }) {
+    try {
+      const message = JSON.parse(data)
+    } catch (error) {
+      console.error(error)
+    }
+  }
 
-  watch() {
-    const repeat = () => {
-      setTimeout(() => {
-        this.watch()
-      }, 1000)
+  start(force = true) {
+    clearTimeout(this.timer)
+
+    if (force) {
+      this.active = true
     }
 
-    this.execute(() => {
-      while (this.messages.length) {
-        this.socket.send(this.messages.pop())
-      }
-      repeat()
-    }, repeat)
+    if (!this.active) {
+      return
+    }
+
+    if (this.socket == undefined || this.socket.readyState == WebSocket.CLOSED) {
+      this.connect({
+        onOpen: () => {
+          this.start(false)
+        },
+        onClose: () => {
+          clearTimeout(this.timer)
+
+          this.timer = setTimeout(() => {
+            this.start(false)
+          }, this.timeout)
+        },
+      })
+
+      return
+    }
+
+    if (this.socket.readyState == WebSocket.OPEN) {
+      this.flush()
+    }
+
+    this.timer = setTimeout(() => {
+      this.start(false)
+    }, this.timeout)
+  }
+
+  stop() {
+    this.active = false
+
+    if (this.socket) {
+      this.socket.close()
+    }
+  }
+
+  flush() {
+    while (this.queue.length) {
+      this.socket.send(this.queue.pop())
+    }
   }
 
   push(message) {
-    this.messages.push(JSON.stringify(message))
+    this.queue.push(JSON.stringify(message))
   }
 
-  on(type, execute, once = true) {
-    this.listeners.push({
-      type,
-      execute,
-      once,
-    })
+  on(types, execute, once = true) {
   }
 
   off(listener) {
-    const index = this.listeners.indexOf(listener)
-
-    if (index > -1) {
-      this.listeners.splice(index, 1)
-    }
   }
-
-  dispatch(type) {
-    for (const listener of this.listeners.slice()) {
-      if (listener.type == type) {
-        listener.execute()
-      }
-
-      if (listener.once) {
-        this.off(listener)
-      }
-    }
-  }
-
-  subscribe(message) {
-    this.push(message)
-  }
-  unsubscribe() {}
 }
 
 export {
-  WebSocketService,
+  WebSocketQueue,
 }
