@@ -1,12 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MessangerPage from '../page/MessangerPage.vue'
-import WelcomPage from '../page/WelcomPage.vue'
+import IndexPage from '../page/IndexPage.vue'
 
 
 const routes = [
   {
     path: '/',
-    component: WelcomPage,
+    component: IndexPage,
   },
   {
     path: '/messanger',

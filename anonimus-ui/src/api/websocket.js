@@ -105,11 +105,39 @@ class WebSocketQueue {
     this.queue.push(JSON.stringify(message))
   }
 
-  on(types, execute, once = true) {
+  on(type, execute, once = true) {
+    this.listeners.push({
+      type,
+      execute,
+      once,
+    })
   }
 
   off(listener) {
+    const index = this.listeners.indexOf(listener)
+
+    if (index > -1) {
+      this.listeners.splice(index, 1)
+    }
   }
+
+  dispatch(type) {
+    for (const listener of this.listeners.slice()) {
+      if (listener.type == type) {
+        listener.execute()
+      }
+
+      if (listener.once) {
+        this.off(listener)
+      }
+    }
+  }
+
+  subscribe(chanel, execute, id) {
+    this.on({})
+  }
+
+  unsubscribe(id) {}
 }
 
 export {

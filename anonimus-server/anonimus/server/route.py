@@ -31,8 +31,6 @@ async def connection(request: Request) -> WebSocketResponse:
                 case Subscription():
                     async with request.app[Key.redis] as redis:
                         length = await redis.xlen('user')
-
-                        print('length', length)
                 case Message(text=text):
                     async with request.app[Key.redis] as redis:
                         id = await redis.xadd('user', {'text': text})

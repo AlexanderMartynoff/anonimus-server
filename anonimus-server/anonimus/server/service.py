@@ -13,6 +13,7 @@ async def on_startup(app: Application):
     app[Key.socket] = WeakSet()
     app[Key.redis] = Redis(host='localhost', port=6379)
 
+
 async def on_shutdown(app: Application):
     app[Key.socket].clear()
     await app[Key.redis].aclose()

@@ -19,7 +19,8 @@
     "vue-router": "^4.0.0"
   },
   "devDependencies": {
-    "@quasar/app-webpack": "^3.0.0"
+    "@quasar/app-webpack": "^3.0.0",
+    "@types/uuid": "^9.0.7"
   },
   "browserslist": [
     "last 10 Chrome versions",

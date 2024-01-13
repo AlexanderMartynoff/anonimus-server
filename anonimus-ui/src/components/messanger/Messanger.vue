@@ -1,15 +1,14 @@
 <template>
   <q-layout view="lHh Lpr lFf" class="bg-white">
     <q-header>
-      <q-toolbar>
+      <toolbar-header>
         <q-btn flat icon="menu" class="q-mr-sm" @click="onBtnMenuClick"/>
-        <q-toolbar-title>Anonimus</q-toolbar-title>
-      </q-toolbar>
+      </toolbar-header>
     </q-header>
 
     <q-drawer bordered side="left" :width="leftBarWidth" :breakpoint="leftBarBreakpoint" v-model="showLeftBar">
       <q-toolbar class="bg-primary text-white">
-        <q-toolbar-title>Contacts</q-toolbar-title>
+        <q-toolbar-title>[ c.o.n.t.a.c.t.s ]</q-toolbar-title>
       </q-toolbar>
       <messanger-contact-list @select="onContactSelect"/>
     </q-drawer>
@@ -28,9 +27,11 @@
 
 <script>
 import { ref, computed, inject, reactive, onMounted, onUnmounted } from 'vue'
+import { v4 } from 'uuid'
 import MessangerChat from './MessangerChat.vue'
 import MessangerMessageToolbar from './MessangerMessageToolbar.vue'
 import MessangerContactList from './MessangerContactList.vue'
+import ToolbarHeader from '../layout/ToolbarHeader.vue'
 
 
 export default {
@@ -39,6 +40,7 @@ export default {
     MessangerChat,
     MessangerMessageToolbar,
     MessangerContactList,
+    ToolbarHeader,
   },
   props: {
     leftBarWidth: {
@@ -51,27 +53,22 @@ export default {
     },
   },
 
-  setup(props) {
+  setup(props, context) {
     const websocket = inject('websocket')
-    const uuid = inject('uuid')
+    const uuid = v4()
 
     const showLeftBar = ref(true)
     const leftBarWidth = computed(() => props.leftBarWidth)
     const leftBarBreakpoint = computed(() => props.leftBarBreakpoint)
 
-    const messages = reactive([])
-
-    let chanel = null
+    const messages = ref([])
 
     onMounted(() => {
-      chanel = websocket.on({
-        type: 'Subscription',
-        id: uuid,
-      })
+      websocket.subscribe('message::income', () => {}, uuid)
     })
 
     onUnmounted(() => {
-      websocket.off(chanel)
+      websocket.unsubscribe(uuid)
     })
 
     return {
@@ -81,7 +78,6 @@ export default {
       messages,
 
       onContactSelect(contact) {
-        messages = []
       },
 
       onBtnMenuClick() {
@@ -89,8 +85,8 @@ export default {
       },
 
       onBtnSendClick(message) {
-        messages.push(message)
         websocket.push(message)
+        messages.value.push(message)
       },
     }
   },

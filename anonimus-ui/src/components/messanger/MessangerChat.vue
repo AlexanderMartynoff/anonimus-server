@@ -15,8 +15,8 @@ export default {
   name: 'MessangerChat',
   props: {
     messages: {
-      default: [],
       type: Array,
+      default: [],
     },
   },
 
