@@ -1,43 +1,33 @@
 from __future__ import annotations
-from aiohttp.web import Response, WebSocketResponse, RouteTableDef, Request, json_response
-from aiohttp import WSMsgType
-from msgspec.json import decode
-import loguru
-from .struct import Message, Registration, Status, Subscription, Ping
-from .service import Key
+from fastapi import APIRouter, WebSocket, Depends
+from starlette.websockets import WebSocketDisconnect
+from typing import Annotated
+from redis.asyncio import Redis
+from pydantic import TypeAdapter
+from .service import Connection, redis
 
 
-routes = RouteTableDef()
+router = APIRouter()
 
 
-@routes.get('/api/messanger/connect')
-async def connection(request: Request) -> WebSocketResponse:
-    socket = WebSocketResponse()
+@router.websocket('/api/messanger/connect')
+async def connect(websocket: WebSocket, redis: Annotated[Redis, Depends(redis)]):
+    await websocket.accept()
 
-    await socket.prepare(request)
+    while websocket:
+        try:
+            values = await websocket.receive_json()
+        except WebSocketDisconnect:
+            break
 
-    async for msg in socket:
-        if msg.type == WSMsgType.text:
-            try:
-                element = decode(msg.data, type=Registration | Message | Status | Subscription | Ping)
-            except TypeError:
-                raise
-
-            match element:
-                case Registration(sender=sender):
-                    request.app[Key.socket].add(socket)
-                case Status(value=value):
-                    pass
-                case Subscription():
-                    async with request.app[Key.redis] as redis:
-                        length = await redis.xlen('user')
-                case Message(text=text):
-                    async with request.app[Key.redis] as redis:
-                        id = await redis.xadd('user', {'text': text})
-
-                        print('id', id)
-
-        if msg.type == WSMsgType.error:
+        if not values:
             continue
 
-    return socket
+        match values:
+            case {'type': 'On'}:
+                pass
+
+            case {'type': 'Off'}:
+                pass
+
+        print(values)

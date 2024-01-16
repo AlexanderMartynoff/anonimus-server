@@ -34,8 +34,8 @@ export default {
     const users = ref([])
 
     onMounted(() => {
-      websocket.subscribe('user-online::change', ({data}) => {
-        users.value = data
+      websocket.subscribe('subscribers::change', ({data}) => {
+        console.log(data)
       }, uuid)
     })
 

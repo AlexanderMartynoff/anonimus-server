@@ -3,22 +3,24 @@
 </template>
 
 <script>
-import { inject, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, provide } from 'vue'
+import { WebSocketQueue } from './api/websocket.js'
 
 export default {
   name: 'App',
 
   setup () {
-    const websocket = inject('websocket')
+    const websocket = new WebSocketQueue(`ws://${location.host}/api/messanger/connect`)
 
     onMounted(() => {
       websocket.start()
-      websocket.push({type: 'Registration'})
     })
 
     onUnmounted(() => {
       websocket.stop()
     })
+
+    provide('websocket', websocket)
   },
 }
 </script>

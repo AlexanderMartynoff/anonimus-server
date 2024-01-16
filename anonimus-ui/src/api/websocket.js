@@ -37,17 +37,18 @@ class WebSocketQueue {
       onClose()
     }
 
-    this.socket.onmessage = () => {
-      this.onMessage()
+    this.socket.onmessage = (message) => {
+      this.onMessage(message)
     }
   }
 
-  onMessage({ data }) {
+  onMessage(data) {
     try {
       const message = JSON.parse(data)
     } catch (error) {
-      console.error(error)
     }
+
+    console.log(data)
   }
 
   start(force = true) {
@@ -133,8 +134,15 @@ class WebSocketQueue {
     }
   }
 
-  subscribe(chanel, execute, id) {
-    this.on({})
+  subscribe(name, execute, id) {
+    this.on(name, () => {
+
+    })
+
+    this.push({
+      type: 'On',
+      name,
+    })
   }
 
   unsubscribe(id) {}

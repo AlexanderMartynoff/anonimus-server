@@ -1,19 +1,31 @@
-from weakref import WeakSet
-from aiohttp.web import Application, AppKey, WebSocketResponse
-from redis.asyncio import Redis, client
+from typing import Any
+from collections import defaultdict
+from dataclasses import dataclass, field
+from weakref import WeakSet, WeakValueDictionary
+from redis.asyncio import Redis, BlockingConnectionPool
 
 
-class Key:
-    redis = AppKey('redis', Redis)
-    broker = AppKey('broker', client.PubSub)
-    socket = AppKey('websocket', WeakSet[WebSocketResponse])
+@dataclass
+class Connection:
+    PHANTOM = 0
+    USER = 1
+
+    socket: None
+    sender: str | None = None
+    events: set[str] = field(default_factory=set)
+    state: int = PHANTOM
+    user: Any = None
 
 
-async def on_startup(app: Application):
-    app[Key.socket] = WeakSet()
-    app[Key.redis] = Redis(host='localhost', port=6379)
+async def redis():
+    # Redis.from_pool()
 
+    redis = Redis(host='localhost', port=6379)
 
-async def on_shutdown(app: Application):
-    app[Key.socket].clear()
-    await app[Key.redis].aclose()
+    try:
+        yield redis
+    except Exception:
+        pass
+
+    await redis.aclose()
+

@@ -10,10 +10,7 @@ module.exports = configure(function (ctx) {
       }
     },
     supportTS: false,
-    boot: [
-      'websocket.js',
-    ],
-
+    boot: [],
     extras: [
       'roboto-font',
       'material-icons',
@@ -39,7 +36,7 @@ module.exports = configure(function (ctx) {
     devServer: {
       proxy: {
         '/api': {
-           target: 'ws://localhost:9090',
+           target: 'ws://localhost:9000',
            ws: true,
            changeOrigin: true,
         },

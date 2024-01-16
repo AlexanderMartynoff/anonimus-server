@@ -1,12 +1,17 @@
 {
     "configurations": [
         {
-            "name": "Server",
+            "name": "Anonimus (FastAPI)",
             "type": "python",
             "request": "launch",
-            "program": "~/Projects/anonimus/anonimus-server/.venv/bin/anonimus-server",
-            "console": "integratedTerminal",
-            "justMyCode": false
-        }
+            "module": "uvicorn",
+            "args": [
+                "anonimus.server.__main__:api",
+                "--port",
+                "9000",
+            ],
+            "justMyCode": false,
+            "pythonArgs": ["-Xfrozen_modules=off"]
+        },
     ]
 }

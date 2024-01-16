@@ -53,7 +53,7 @@ export default {
     },
   },
 
-  setup(props, context) {
+  setup(props, ctx) {
     const websocket = inject('websocket')
     const uuid = v4()
 
