@@ -10,7 +10,7 @@
 **/.eggs
 **/bundle
 .mypy_cache
-*/.DS_Store
+.DS_Store
 */.vscode
 **/*.code-workspace
 *.log

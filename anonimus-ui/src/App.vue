@@ -5,6 +5,7 @@
 <script>
 import { onMounted, onUnmounted, provide } from 'vue'
 import { WebSocketQueue } from './api/websocket.js'
+import { v4 } from 'uuid'
 
 export default {
   name: 'App',
@@ -14,6 +15,10 @@ export default {
 
     onMounted(() => {
       websocket.start()
+      websocket.push({
+        type: 'Identify',
+        name: v4(),
+      })
     })
 
     onUnmounted(() => {

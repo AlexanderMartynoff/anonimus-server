@@ -12,10 +12,6 @@ class WebSocketQueue {
     this.waiters = []
 
     this.active = false
-
-    this.push({
-      type: 'Ping',
-    })
   }
 
   connect({ onOpen = () => {}, onError = () => {}, onClose = () => {} }) {

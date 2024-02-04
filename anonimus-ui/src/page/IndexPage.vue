@@ -28,9 +28,9 @@ export default {
   },
 
   setup(props) {
-    const uuid = v4()
-
     const websocket = inject('websocket')
+
+    const uuid = v4()
     const users = ref([])
 
     onMounted(() => {
