@@ -11,9 +11,9 @@
         </q-item-section>
 
         <q-item-section>
-          <q-item-label lines="1">Brunch this weekend?</q-item-label>
+          <q-item-label lines="1">{{user.name}}</q-item-label>
           <q-item-label caption lines="2">
-            <span class="text-weight-bold">Janet</span> -- I'll be in your neighborhood doing errands this
+            <span class="text-weight-bold">---</span> ///
           </q-item-label>
         </q-item-section>
 

@@ -15,7 +15,7 @@
 </template>
 
 <script>
-import { ref, inject, onMounted, onUnmounted, provide } from 'vue'
+import { ref, inject, onMounted, onUnmounted, provide, reactive } from 'vue'
 import { v4 } from 'uuid'
 import UserList from '../components/user/UserList.vue'
 import ToolbarHeader from '../components/layout/ToolbarHeader.vue'
@@ -29,23 +29,29 @@ export default {
 
   setup(props) {
     const websocket = inject('websocket')
-
-    const uuid = v4()
     const users = ref([])
 
+    const onOnline = ({uuids}) => {
+      if (uuids) {
+        users.value = uuids.split('|').map((uuid) => {
+          return {
+            name: uuid,
+          }
+        })
+      }
+    }
+
     onMounted(() => {
-      websocket.subscribe('people::change', ({data}) => {
-        console.log(data)
-      }, uuid)
+      websocket.on('Online', onOnline, false)
     })
 
     onUnmounted(() => {
-      websocket.unsubscribe(uuid)
+      websocket.off(onOnline)
     })
 
     return {
       slide: ref('style'),
-      users: [],
+      users,
     }
   },
 }

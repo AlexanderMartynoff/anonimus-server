@@ -3,7 +3,7 @@ class WebSocketOpenError extends WebSocketError {}
 
 
 class WebSocketQueue {
-  constructor(url, timeout = 1000) {
+  constructor(url, timeout = 5000) {
     this.url = url
     this.timeout = timeout
 
@@ -14,7 +14,7 @@ class WebSocketQueue {
     this.active = false
   }
 
-  connect({ onOpen = () => {}, onError = () => {}, onClose = () => {} }) {
+  connect({ onOpen = () => {}, onClose = () => {} }) {
     if (this.socket && this.socket.readyState != WebSocket.CLOSED) {
       throw new WebSocketOpenError()
     }
@@ -23,29 +23,25 @@ class WebSocketQueue {
 
     this.socket.onopen = () => {
       onOpen()
+      this.dispatch('Open')
     }
 
     this.socket.onerror = () => {
-      onError()
+      this.dispatch('Error')
     }
 
     this.socket.onclose = () => {
       onClose()
+      this.dispatch('Close')
     }
 
     this.socket.onmessage = (message) => {
-      this.onMessage(message.data)
+      const record = JSON.parse(message.data)
+
+      if (record.type) {
+        this.dispatch(record.type, record)
+      }
     }
-  }
-
-  onMessage(data) {
-    let message = JSON.parse(data)
-
-    if (message.type === undefined) {
-      throw Error('Unefined message type')
-    }
-
-    this.dispatch(message.type, message)
   }
 
   start(force = true) {
@@ -99,11 +95,15 @@ class WebSocketQueue {
     }
   }
 
-  push(message, type='Message') {
+  push(message, type = 'Message', flush = true) {
     this.queue.push(JSON.stringify({
       type,
       ...message,
     }))
+
+    if (flush && this.socket.readyState == WebSocket.OPEN) {
+      this.flush()
+    }
   }
 
   on(type, execute, once = true) {
@@ -114,8 +114,8 @@ class WebSocketQueue {
     })
   }
 
-  off(listener) {
-    const index = this.listeners.indexOf(listener)
+  off(executer) {
+    const index = this.listeners.indexOf(executer)
 
     if (index > -1) {
       this.listeners.splice(index, 1)
@@ -123,21 +123,28 @@ class WebSocketQueue {
   }
 
   dispatch(type, event) {
-    console.log(this.listeners)
-
     for (const listener of this.listeners.slice()) {
       if (listener.type == type) {
         listener.execute(event)
-      }
 
-      if (listener.once) {
-        this.off(listener)
+        if (listener.once) {
+          this.off(listener)
+        }
       }
     }
   }
 
-  subscribe(name, execute, id) {}
-  unsubscribe(id) {}
+  subscribe(names, callback) {
+    for (const name of names) {
+      this.push({name}, 'On')
+    }
+  }
+
+  unsubscribe(names, callback) {
+    for (const name of names) {
+      this.push({name}, 'Off')
+    }
+  }
 }
 
 export {

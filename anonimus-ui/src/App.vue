@@ -22,15 +22,15 @@ export default {
 
     onMounted(() => {
       websocket.start()
-      websocket.push({
-        type: 'Identify',
-        name: uuid,
-      })
     })
 
     onUnmounted(() => {
       websocket.stop()
     })
+
+    websocket.on('Open', () => {
+      websocket.subscribe([uuid, 'Message', 'Online'])
+    }, false)
 
     provide('websocket', websocket)
     provide('uuid', uuid)
