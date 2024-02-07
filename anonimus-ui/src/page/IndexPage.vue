@@ -15,7 +15,7 @@
 </template>
 
 <script>
-import { ref, inject, onMounted, onUnmounted } from 'vue'
+import { ref, inject, onMounted, onUnmounted, provide } from 'vue'
 import { v4 } from 'uuid'
 import UserList from '../components/user/UserList.vue'
 import ToolbarHeader from '../components/layout/ToolbarHeader.vue'
@@ -34,7 +34,7 @@ export default {
     const users = ref([])
 
     onMounted(() => {
-      websocket.subscribe('subscribers::change', ({data}) => {
+      websocket.subscribe('people::change', ({data}) => {
         console.log(data)
       }, uuid)
     })

@@ -24,11 +24,6 @@ export default {
     const container = computed(() => props.container)
 
     onMounted(async () => {
-      websocket.subscribe('contact::update', () => {})
-
-      setTimeout(async () => {
-        let contacts = await fetch('/api/contact')
-      }, 1000)
     })
 
     return {

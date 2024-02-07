@@ -15,9 +15,8 @@ export default {
     container: {
       type: Boolean,
     },
-    members: {
-      default: [],
-      type: Array,
+    chat: {
+      type: String,
     },
   },
 
@@ -33,8 +32,8 @@ export default {
         ctx.emit(
           'send',
           reactive({
-            type: 'Message',
             text: text.value,
+            chat: props.chat,
           })
         )
 

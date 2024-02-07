@@ -10,7 +10,8 @@
                 "anonimus.server.__main__:create",
                 "--port",
                 "9000",
-                "--reload",
+                "--log-level",
+                "debug",
             ],
             "justMyCode": false,
             "pythonArgs": ["-Xfrozen_modules=off"]

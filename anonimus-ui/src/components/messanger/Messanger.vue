@@ -14,12 +14,12 @@
     </q-drawer>
 
     <q-page-container>
-      <messanger-chat :messages="messages"/>
+      <messanger-chat :messages="messages" :chat="chat"/>
     </q-page-container>
 
     <q-footer>
       <q-toolbar>
-        <messanger-message-toolbar @send="onBtnSendClick"/>
+        <messanger-message-toolbar @send="onBtnSendClick" :chat="chat"/>
       </q-toolbar>
     </q-footer>
   </q-layout>
@@ -55,20 +55,25 @@ export default {
 
   setup(props, ctx) {
     const websocket = inject('websocket')
-    const uuid = v4()
+    const uuid = inject('uuid')
 
     const showLeftBar = ref(true)
     const leftBarWidth = computed(() => props.leftBarWidth)
     const leftBarBreakpoint = computed(() => props.leftBarBreakpoint)
 
     const messages = ref([])
+    const chat = ref(uuid)
+
+    const onMessage = (message) => {
+      messages.value.push(message)
+    }
 
     onMounted(() => {
-      websocket.subscribe('message::income', () => {}, uuid)
+      websocket.on('Message', onMessage, false)
     })
 
     onUnmounted(() => {
-      websocket.unsubscribe(uuid)
+      websocket.off(onMessage)
     })
 
     return {
@@ -76,6 +81,7 @@ export default {
       leftBarWidth,
       leftBarBreakpoint,
       messages,
+      chat,
 
       onContactSelect(contact) {
       },

@@ -34,17 +34,18 @@ class WebSocketQueue {
     }
 
     this.socket.onmessage = (message) => {
-      this.onMessage(message)
+      this.onMessage(message.data)
     }
   }
 
   onMessage(data) {
-    try {
-      const message = JSON.parse(data)
-    } catch (error) {
+    let message = JSON.parse(data)
+
+    if (message.type === undefined) {
+      throw Error('Unefined message type')
     }
 
-    console.log(data)
+    this.dispatch(message.type, message)
   }
 
   start(force = true) {
@@ -98,8 +99,11 @@ class WebSocketQueue {
     }
   }
 
-  push(message) {
-    this.queue.push(JSON.stringify(message))
+  push(message, type='Message') {
+    this.queue.push(JSON.stringify({
+      type,
+      ...message,
+    }))
   }
 
   on(type, execute, once = true) {
@@ -118,10 +122,12 @@ class WebSocketQueue {
     }
   }
 
-  dispatch(type) {
+  dispatch(type, event) {
+    console.log(this.listeners)
+
     for (const listener of this.listeners.slice()) {
       if (listener.type == type) {
-        listener.execute()
+        listener.execute(event)
       }
 
       if (listener.once) {
@@ -130,17 +136,7 @@ class WebSocketQueue {
     }
   }
 
-  subscribe(name, execute, id) {
-    this.on(name, () => {
-
-    })
-
-    this.push({
-      type: 'On',
-      name,
-    })
-  }
-
+  subscribe(name, execute, id) {}
   unsubscribe(id) {}
 }
 

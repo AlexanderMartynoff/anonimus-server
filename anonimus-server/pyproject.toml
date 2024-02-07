@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "anonimus-server"
 version = "0.0.0"
-description = "\"Anonimus\" chat server"
+description = "\"Anonimus\" chat (End-to-End Encryption)"
 readme = "README.md"
 authors = ["Martynov Alexandr <triplustr@mail.ru>"]
 packages = [
