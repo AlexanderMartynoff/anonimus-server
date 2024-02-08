@@ -1,6 +1,6 @@
 {
     "python.linting.enabled": true,
-    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.typeCheckingMode": "basic",
     "typescript.suggestionActions.enabled": false,
     "javascript.suggestionActions.enabled": false,
 }

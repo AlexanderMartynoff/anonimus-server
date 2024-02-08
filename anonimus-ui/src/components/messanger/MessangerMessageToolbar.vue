@@ -6,7 +6,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, inject } from 'vue'
 
 export default {
   name: 'MessangerMessageToolbar',
@@ -21,6 +21,8 @@ export default {
   },
 
   setup(props, ctx) {
+    const uuid = inject('uuid')
+
     const input = ref(null)
     const text = ref(null)
 
@@ -34,6 +36,7 @@ export default {
           reactive({
             text: text.value,
             chat: props.chat,
+            sender: uuid,
           })
         )
 

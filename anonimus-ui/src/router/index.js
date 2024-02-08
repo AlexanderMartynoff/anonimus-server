@@ -9,8 +9,10 @@ const routes = [
     component: IndexPage,
   },
   {
-    path: '/messanger',
+    name: 'messanger',
+    path: '/messanger/:chat',
     component: MessangerPage,
+    props: true,
   },
 ]
 

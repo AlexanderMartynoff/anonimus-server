@@ -1,6 +1,6 @@
 <template>
   <div class="q-pa-md messanger__writer messanger__writer--responsive">
-      <q-chat-message name="Me" avatar="https://cdn.quasar.dev/img/avatar3.jpg" stamp="7 minutes ago" sent text-color="white" bg-color="primary" v-for="message in messages">
+      <q-chat-message :name="message.sender" avatar="/static/user.png" stamp="7 minutes ago" :sent="isMyMessage(message)" text-color="white" bg-color="primary" v-for="message in messages">
         <div class="messanger__message">
           {{message.text}}
         </div>
@@ -9,7 +9,7 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { inject } from 'vue'
 
 export default {
   name: 'MessangerChat',
@@ -21,7 +21,13 @@ export default {
   },
 
   setup(props) {
-    
+    const uuid = inject('uuid')
+
+    return {
+      isMyMessage(message) {
+        return message.sender == uuid
+      },
+    }
   },
 }
 </script>

@@ -15,10 +15,10 @@
 </template>
 
 <script>
-import { ref, inject, onMounted, onUnmounted, provide, reactive } from 'vue'
-import { v4 } from 'uuid'
+import { ref, inject, onMounted, onUnmounted } from 'vue'
 import UserList from '../components/user/UserList.vue'
 import ToolbarHeader from '../components/layout/ToolbarHeader.vue'
+import {fetchAs} from '../api/fetch.js'
 
 export default {
   name: 'WelcomPage',
@@ -31,22 +31,21 @@ export default {
     const websocket = inject('websocket')
     const users = ref([])
 
-    const onOnline = ({uuids}) => {
-      if (uuids) {
-        users.value = uuids.split('|').map((uuid) => {
-          return {
-            name: uuid,
-          }
-        })
-      }
+    const onPeopleChange = async () => {
+      const uuids = await fetchAs('/api/who-online')
+
+      users.value = uuids.map((uuid) => {
+        return {name: uuid}
+      })
     }
 
     onMounted(() => {
-      websocket.on('Online', onOnline, false)
+      websocket.on('Online', onPeopleChange, false)
+      onPeopleChange()
     })
 
     onUnmounted(() => {
-      websocket.off(onOnline)
+      websocket.off(onPeopleChange)
     })
 
     return {

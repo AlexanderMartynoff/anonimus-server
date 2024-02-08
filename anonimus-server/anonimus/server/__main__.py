@@ -11,15 +11,15 @@ def create():
         max_connections=10,
     )
 
-    manager = struct.ConnectionManager()
+    connections: dict[str, struct.Connection[WebSocket]] = {}
 
     app = App(
-        middleware=[middleware.BackgroundWorker(redis, manager)],
+        middleware=[middleware.BackgroundWorker(redis, connections)],
     )
 
-    app.add_route('/api/messanger/connect', action.Messanger(redis, manager))
+    app.add_route('/api/messanger/connect', action.Messanger(redis, connections))
     app.add_route('/api/status', action.Status())
-    app.add_route('/api/contact', action.People(manager))
+    app.add_route('/api/who-online', action.WhoOnline(connections))
 
     app.add_error_handler(Exception, _on_error)
 

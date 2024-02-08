@@ -41,6 +41,8 @@ class WebSocketQueue {
       if (record.type) {
         this.dispatch(record.type, record)
       }
+
+      this.dispatch('Any', record)
     }
   }
 

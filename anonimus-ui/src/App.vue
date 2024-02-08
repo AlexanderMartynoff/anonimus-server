@@ -12,7 +12,13 @@ export default {
   name: 'App',
 
   setup () {
-    const websocket = new WebSocketQueue(`ws://${location.host}/api/messanger/connect`)
+    let ref = localStorage.getItem('ref')
+
+    if (!ref) {
+      ref = '0-0'
+    }
+
+    const websocket = new WebSocketQueue(`ws://${location.host}/api/messanger/connect?ref=${ref}`)
 
     if (!cookie.get('uuid')) {
       cookie.set('uuid', v4())
@@ -22,6 +28,11 @@ export default {
 
     onMounted(() => {
       websocket.start()
+      websocket.on('Any', (record) => {
+        if (record.id) {
+          localStorage.setItem('ref', record.id)
+        }
+      }, false)
     })
 
     onUnmounted(() => {

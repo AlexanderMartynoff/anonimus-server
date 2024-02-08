@@ -1,3 +1,0 @@
-class Message {
-    phantom = null
-}

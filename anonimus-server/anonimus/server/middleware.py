@@ -37,7 +37,7 @@ class BackgroundWorker:
             try:
                 await function()
             except Exception as error:
-                logger.error('When execute "%s": %s' % (function.__name__, error))
+                logger.error('When execute "%s": (%s) %s' % (function.__name__, error, error.__class__.__name__))
 
             await asyncio.sleep(0)
 
@@ -46,7 +46,7 @@ class BackgroundWorker:
             return
 
         streams: dict[KeyT, StreamIdT] = {
-            k: self._connections[k].context.get('start_message_id', '0-0') for k in self._connections
+            k: self._connections[k].context.get('ref', '0-0') for k in self._connections
         }
 
         for stream, record in await self._redis.xread(streams=streams):
@@ -59,9 +59,9 @@ class BackgroundWorker:
 
             for id, message in record:
                 await connection.socket.send_media(
-                    {'id': id} | {k.decode(): v.decode() for k, v in message.items()}
+                    {'id': id.decode()} | {k.decode(): v.decode() for k, v in message.items()}
                 )
-                connection.context['start_message_id'] = id
+                connection.context['ref'] = id
 
     async def _process_garbage(self) -> None:
         pass

@@ -8,7 +8,7 @@
 
     <q-drawer bordered side="left" :width="leftBarWidth" :breakpoint="leftBarBreakpoint" v-model="showLeftBar">
       <q-toolbar class="bg-primary text-white">
-        <q-toolbar-title>[ c.o.n.t.a.c.t.s ]</q-toolbar-title>
+        <q-toolbar-title>[ contacts ]</q-toolbar-title>
       </q-toolbar>
       <messanger-contact-list @select="onContactSelect"/>
     </q-drawer>
@@ -26,8 +26,8 @@
 </template>
 
 <script>
-import { ref, computed, inject, reactive, onMounted, onUnmounted } from 'vue'
-import { v4 } from 'uuid'
+import { scroll } from 'quasar'
+import { ref, computed, inject, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import MessangerChat from './MessangerChat.vue'
 import MessangerMessageToolbar from './MessangerMessageToolbar.vue'
 import MessangerContactList from './MessangerContactList.vue'
@@ -51,18 +51,20 @@ export default {
       type: Number,
       default: 690,
     },
+    chat: {
+      type: String,
+    },
   },
 
   setup(props, ctx) {
     const websocket = inject('websocket')
-    const uuid = inject('uuid')
 
     const showLeftBar = ref(true)
     const leftBarWidth = computed(() => props.leftBarWidth)
     const leftBarBreakpoint = computed(() => props.leftBarBreakpoint)
 
     const messages = ref([])
-    const chat = ref(uuid)
+    const chat = ref(props.chat)
 
     const onMessage = (message) => {
       messages.value.push(message)
@@ -74,6 +76,12 @@ export default {
 
     onUnmounted(() => {
       websocket.off(onMessage)
+    })
+
+    watch(messages.value, () => {
+      nextTick(() => {
+        scroll.setVerticalScrollPosition(window, document.body.scrollHeight - window.innerHeight, 500)
+      })
     })
 
     return {

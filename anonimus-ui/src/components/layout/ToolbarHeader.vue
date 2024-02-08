@@ -1,7 +1,7 @@
 <template>
 	<q-toolbar>
 		<slot/>
-		<q-toolbar-title>[ a.n.o.n.i.m.u.s ]</q-toolbar-title>
+		<q-toolbar-title>[ chat ]</q-toolbar-title>
 	</q-toolbar>
 </template>
 

@@ -2,7 +2,7 @@ from typing import Any
 from redis.asyncio import Redis
 
 
-async def get_chat_members(redis: Redis, chat: str) -> set[str]:
+async def find_chat_members(redis: Redis, chat: str) -> set[str]:
     return {chat}
 
 
