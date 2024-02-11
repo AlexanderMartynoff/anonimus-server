@@ -1,5 +1,8 @@
-from falcon.asgi import Request, Response, WebSocket
-from falcon.errors import WebSocketDisconnected, HTTPForbidden
+from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
+from starlette.responses import JSONResponse
+from starlette.types import Receive, Scope, Send
+from starlette.websockets import WebSocket, WebSocketState
+from starlette.requests import Request
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 from msgspec.json import decode, encode
@@ -10,46 +13,44 @@ from anonimus.server.struct import Message, On, Off, Element, Connection
 from anonimus.server.api import find_chat_members, put_message
 
 
-class Messanger:
-    def __init__(self, redis: Redis, connections: dict[str, Connection[WebSocket]]) -> None:
-        self._redis = redis
-        self._connections = connections
+class Messanger(WebSocketEndpoint):
+    connections: dict[str, Connection]
+    redis: Redis
 
-    async def on_websocket(self, request: Request, websocket: WebSocket) -> None:
-        uuid: str = request.cookies.get('uuid')  # type: ignore
+    async def on_connect(self, websocket: WebSocket) -> None:
+        """Override to handle an incoming websocket connection"""
+        await websocket.accept()
+
+    async def on_receive(self, websocket: WebSocket) -> None:
+        uuid: str | None = websocket.cookies.get('uuid')
 
         if not uuid:
-            raise HTTPForbidden()
+            raise ValueError()
 
-        if uuid in self._connections:
-            raise HTTPForbidden()
+        if uuid in self.connections:
+            raise ValueError()
 
-        try:
-            await websocket.accept()
-        except WebSocketDisconnected as error:
-            raise error
-
-        self._connections[uuid] = Connection(uuid, websocket, {
-            'ref': request.get_param('ref', default='0-0'),  # type: ignore
+        self.connections[uuid] = Connection(uuid, websocket, {
+            'ref': websocket.query_params.get('ref'),
         })
 
         with suppress(RedisError):
             await self._on_connection_change()
 
         try:
-            await self._process_connection(self._connections[uuid], request)
+            await self._process_connection(self.connections[uuid])
         finally:
             try:
                 await websocket.close()
             finally:
                 with suppress(KeyError):
-                    del self._connections[uuid]
+                    del self.connections[uuid]
 
                 with suppress(RedisError):
                     await self._on_connection_change()
 
-    async def _process_connection(self, connection: Connection[WebSocket], request: Request) -> None:
-        while connection.socket.ready:
+    async def _process_connection(self, connection: Connection[WebSocket]) -> None:
+        while connection.socket.client_state == WebSocketState.CONNECTED:
             record = await connection.socket.receive_text()
 
             try:
@@ -73,22 +74,27 @@ class Messanger:
                     connection.streams.remove(name)
 
             case Message(text=text, chat=chat, uuid=uuid, sender=sender):
-                for member in await find_chat_members(self._redis, chat):
-                    await put_message(self._redis, member, {'type': 'Message', 'uuid': str(uuid), 'text': text, 'sender': sender})
-
-    async def _on_connection_change(self):
-        for connection in self._connections.values():
-            await put_message(self._redis, connection.uuid, {'type': 'Online'})
+                for member in await find_chat_members(self.redis, chat):
+                    await put_message(self.redis, member, {'type': 'Message', 'uuid': str(uuid), 'text': text, 'sender': sender})
 
 
-class WhoOnline:
-    def __init__(self, connections: dict[str, Connection]) -> None:
-        self._connections = connections
+    async def on_disconnect(self, websocket: WebSocket, close_code: int) -> None:
+        await self._on_connection_change()
 
-    async def on_get(self, request: Request, response: Response) -> None:
-        response.data = encode([uuid for uuid in self._connections])
+    async def _on_connection_change(self) -> None:
+        for connection in self.connections.values():
+            await put_message(self.redis, connection.uuid, {'type': 'Online'})
 
 
-class Status:
-    async def on_get(self, request: Request) -> None:
+class WhoOnline(HTTPEndpoint):
+    connections: dict[str, Connection[WebSocket]]
+
+    async def get(self, request: Request) -> JSONResponse:
+        return JSONResponse([uuid for uuid in self.connections])
+
+
+class Status(HTTPEndpoint):
+    connections: dict[str, Connection[WebSocket]]
+
+    async def get(self, request: Request) -> None:
         pass

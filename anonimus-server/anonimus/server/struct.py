@@ -48,7 +48,7 @@ class Status(Element, kw_only=True, tag=True):
 
 
 class Connection[T: Socket]:
-    def __init__(self, uuid: str, socket: T, context: dict[str, str]) -> None:
+    def __init__(self, uuid: str, socket: T, context: dict[str, str | None]) -> None:
         self.uuid = uuid
         self.socket = socket
         self.context = context

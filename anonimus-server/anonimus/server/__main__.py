@@ -1,30 +1,53 @@
+from typing import AsyncIterator, TypedDict, Any
+from contextlib import asynccontextmanager, suppress
 from falcon.asgi import App, WebSocket
-from redis.asyncio import Redis
+from starlette.applications import Starlette
+from redis.asyncio import Redis, RedisError
+from anyio import create_task_group
+from asyncio import TaskGroup
 from loguru import logger
-from anonimus.server import action, struct, middleware
+from anonimus.server import action, service
+from anonimus.server.web.routing import Route, WebSocketRoute
 
 
-def create():
+def create(): 
+    return Starlette(
+        lifespan=lifespan,
+        exception_handlers={
+            Exception: on_exception,
+        },
+        routes=[
+            WebSocketRoute('/api/messanger/connect', action.Messanger)
+        ],
+    )
+
+
+@asynccontextmanager
+async def lifespan(app: Starlette) -> AsyncIterator[None]:
+    ''' Setup/Teardown services
+    '''
+
+    users = {}
     redis = Redis(
         host='localhost',
         port=6379,
         max_connections=10,
     )
 
-    connections: dict[str, struct.Connection[WebSocket]] = {}
+    app.state.redis = redis
+    app.state.users = users
 
-    app = App(
-        middleware=[middleware.BackgroundWorker(redis, connections)],
-    )
+    async with create_task_group() as group:
+        group.start_soon(service.read_redis, redis, users)
+        group.start_soon(service.clear_redis, redis)
 
-    app.add_route('/api/messanger/connect', action.Messanger(redis, connections))
-    app.add_route('/api/status', action.Status())
-    app.add_route('/api/who-online', action.WhoOnline(connections))
+        yield
 
-    app.add_error_handler(Exception, _on_error)
+        group.cancel_scope.cancel()
 
-    return app
+    with suppress(RedisError):
+        await redis.aclose()
 
 
-async def _on_error(requst, response, error, params, ws=None):
-    logger.exception(error)
+async def on_exception(requst: Any, exception: Any) -> None:
+    logger.exception(exception)
