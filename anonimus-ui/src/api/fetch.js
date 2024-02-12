@@ -4,4 +4,6 @@ export async function fetchAs(url, type='json') {
     switch (type) {
         case 'json': return await response.json()
     }
+
+    return await response.text()
 }

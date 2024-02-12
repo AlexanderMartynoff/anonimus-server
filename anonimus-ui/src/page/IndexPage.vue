@@ -32,7 +32,7 @@ export default {
     const users = ref([])
 
     const onPeopleChange = async () => {
-      const uuids = await fetchAs('/api/who-online')
+      const uuids = await fetchAs('/api/connection')
 
       users.value = uuids.map((uuid) => {
         return {name: uuid}

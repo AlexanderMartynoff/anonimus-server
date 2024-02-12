@@ -2,28 +2,20 @@ from typing import Any, Awaitable, Callable
 import asyncio
 from redis.asyncio import Redis
 from redis.typing import KeyT, StreamIdT
-from starlette.responses import Response
-from starlette.websockets import WebSocket
+from aiohttp.web_ws import WebSocketResponse
+from aiohttp.web import AppKey
 from loguru import logger
 from anonimus.server import struct
+from anonimus.server.toolling.misc import repeat
 
 
-def repeat[T](function: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
-
-    async def repeater[**P](*args: P.args, **kwargs: P.kwargs) -> T:
-        while True:
-            try:
-                await function(*args, **kwargs)
-            except Exception as error:
-                logger.error('When execute "%s": (%s) %s' % (function.__name__, error, error.__class__.__name__))
-
-            await asyncio.sleep(0)
-
-    return repeater
+REDIS = AppKey('redis', Redis)
+CONNECTIONS = AppKey('users', dict[str, struct.Connection[WebSocketResponse]])
 
 
 @repeat
-async def read_redis(redis: Redis, connections: dict[str, struct.Connection[WebSocket]]) -> None:
+@logger.catch(Exception, message='Reading from "Redis" streams error')
+async def read_redis(redis: Redis, connections: dict[str, struct.Connection[WebSocketResponse]]) -> None:
     if not connections:
         return
 
@@ -47,5 +39,6 @@ async def read_redis(redis: Redis, connections: dict[str, struct.Connection[WebS
 
 
 @repeat
+@logger.catch(Exception, message='Cleaning from "Redis" error')
 async def clear_redis(redis: Redis):
     pass
