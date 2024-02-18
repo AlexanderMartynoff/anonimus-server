@@ -1,8 +1,7 @@
-from typing import Protocol, AsyncGenerator, AsyncIterable
 import enum
 from time import time
 from uuid import uuid4, UUID
-from msgspec import Struct, field, UNSET, UnsetType as Unset
+from msgspec import Struct, field
 
 
 class Media(Struct, kw_only=True):

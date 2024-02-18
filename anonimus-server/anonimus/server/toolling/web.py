@@ -1,11 +1,6 @@
 from typing import Iterable
-from inspect import signature
-from aiohttp.web import View as AiohttpView, Request, WebSocketResponse
+from aiohttp.web import View, Request, WebSocketResponse
 from aiohttp.http_websocket import WSMessage
-
-
-class View(AiohttpView):
-    pass
 
 
 class WebsocketView(View):
@@ -18,9 +13,7 @@ class WebsocketView(View):
     compress: bool = True
     max_msg_size: int = 4 * 1024 * 1024
 
-    def __init__(self, request: Request) -> None:
-        super().__init__(request)
-
+    async def get(self):
         self._websocket = WebSocketResponse(
             timeout=self.timeout,
             receive_timeout=self.receive_timeout,
@@ -31,19 +24,18 @@ class WebsocketView(View):
             max_msg_size=self.max_msg_size,
         )
 
-    async def get(self):
-        await self.websocket.prepare(self.request)
+        await self._websocket.prepare(self.request)
 
         try:
             await self.open()
-            async for message in self.websocket:
+            async for message in self._websocket:
                 await self.message(message)
         except Exception as exception:
             await self.close(exception)
-        finally:
+        else:
             await self.close()
 
-        return self.websocket
+        return self._websocket
 
     async def open(self):
         raise NotImplementedError()
@@ -57,3 +49,11 @@ class WebsocketView(View):
     @property
     def websocket(self) -> WebSocketResponse:
         return self._websocket
+
+
+class AiohttpRequestMixin:
+    request: Request
+
+    @property
+    def uuid(self):
+        return self.request.cookies['uuid']

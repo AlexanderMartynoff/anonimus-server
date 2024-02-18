@@ -1,16 +1,26 @@
 <template>
 	<q-toolbar>
 		<slot/>
-		<q-toolbar-title>[ chat ]</q-toolbar-title>
+		<q-toolbar-title>[ anonimus ]</q-toolbar-title>
+		<q-btn flat dense icon="home" @click="onHomeClick"/>
 	</q-toolbar>
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 
 export default {
+	emits: ['click-home'],
 	name: 'Toolbar',
-	setup(props) {},
+	setup() {
+    const router = useRouter()
+
+		return {
+			onHomeClick() {
+        router.push({name: 'index'})
+			}
+		}
+	},
 }
 </script>
   

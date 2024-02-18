@@ -5,6 +5,7 @@ import IndexPage from '../page/IndexPage.vue'
 
 const routes = [
   {
+    name: 'index',
     path: '/',
     component: IndexPage,
   },

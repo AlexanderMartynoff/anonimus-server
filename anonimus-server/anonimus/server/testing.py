@@ -1,29 +1,27 @@
-from typing import Callable, AsyncIterable
-from contextlib import suppress
+from typing import Any
 from aiohttp import web
-from aiojobs.aiohttp import AIOJOBS_SCHEDULER
-from anonimus.server.service import REDIS, CONNECTIONS
-from redis.asyncio import Redis, RedisError
-from anonimus.server.service import read_redis, clear_redis
-from anonimus.server.struct import Connection
+from fakeredis.aioredis import FakeRedis
+from anonimus.server.service import REDIS
+from anonimus.server.setup import setup_connections, setup_aiojobs_scheduler, setup_routes
 
 
-async def cleanup_context_factory(
-        redis: Redis,
-        connections: dict[str, Connection[web.WebSocketResponse]]) -> Callable[[web.Application], AsyncIterable[None]]:
-
-    async def cleanup_context(app: web.Application) -> AsyncIterable[None]:
-        app[REDIS] = redis
-        app[CONNECTIONS] = connections
-
-        await app[AIOJOBS_SCHEDULER].spawn(read_redis(redis, connections))
-        await app[AIOJOBS_SCHEDULER].spawn(clear_redis(redis))
+def setup_redis(app: web.Application):
+    async def cleanup_context(app: web.Application):
+        app[REDIS] = redis = FakeRedis()
 
         yield
 
-        with suppress(RedisError):
-            await redis.aclose()
+        await redis.flushall()
 
-        connections.clear()
+    app.cleanup_ctx.append(cleanup_context)
 
-    return cleanup_context
+
+def create_app(config: dict[str, Any] | None = None):
+    app = web.Application()
+
+    setup_routes(app)
+    setup_redis(app)
+    setup_connections(app)
+    setup_aiojobs_scheduler(app)
+
+    return app

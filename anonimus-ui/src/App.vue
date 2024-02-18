@@ -7,11 +7,14 @@ import cookie from 'js-cookie'
 import { onMounted, onUnmounted, provide } from 'vue'
 import { WebSocketQueue } from './api/websocket.js'
 import { v4 } from 'uuid'
+import { useUserStore } from './stores/user.js'
+
 
 export default {
   name: 'App',
 
   setup () {
+    const userStore = useUserStore()
     let ref = localStorage.getItem('ref')
 
     if (!ref) {
@@ -26,6 +29,10 @@ export default {
 
     const uuid = cookie.get('uuid')
 
+    const onPeopleChange = async () => {
+      userStore.fetchUsers()
+    }
+
     onMounted(() => {
       websocket.start()
       websocket.on('Any', (record) => {
@@ -33,9 +40,12 @@ export default {
           localStorage.setItem('ref', record.id)
         }
       }, false)
+
+      websocket.on('Online', onPeopleChange, false)
     })
 
     onUnmounted(() => {
+      websocket.off(onPeopleChange)
       websocket.stop()
     })
 

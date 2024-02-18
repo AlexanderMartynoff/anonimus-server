@@ -1,8 +1,8 @@
-export async function fetchAs(url, type='json') {
+export async function fetchAs(url,  mapper=(v) => v, type='json') {
     const response = await fetch(url)
 
     switch (type) {
-        case 'json': return await response.json()
+        case 'json': return mapper(await response.json())
     }
 
     return await response.text()

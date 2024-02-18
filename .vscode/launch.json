@@ -4,17 +4,12 @@
             "name": "Anonimus",
             "type": "python",
             "request": "launch",
-            "module": "uvicorn",
-            "args": [
-                "--factory",
-                "anonimus.server.__main__:create",
-                "--port",
-                "9000",
-                "--log-level",
-                "debug",
-            ],
+            "program": "/Users/alexander/Library/Caches/pypoetry/virtualenvs/anonimus-server-xaNk-DMm-py3.12/bin/anoniumus",
+            "args": [],
             "justMyCode": false,
-            "pythonArgs": ["-Xfrozen_modules=off"]
+            "pythonArgs": [
+                "-Xfrozen_modules=off"
+            ]
         },
     ]
 }

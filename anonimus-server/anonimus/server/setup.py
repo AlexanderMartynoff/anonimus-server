@@ -1,24 +1,47 @@
 from contextlib import suppress
 from aiohttp import web
-from aiojobs.aiohttp import AIOJOBS_SCHEDULER
+from aiojobs.aiohttp import AIOJOBS_SCHEDULER, setup as aiojobs_setup
 from anonimus.server.service import REDIS, CONNECTIONS
 from redis.asyncio import Redis, RedisError
 from anonimus.server.service import read_redis, clear_redis
+from anonimus.server import view
 
 
-async def cleanup_context(app: web.Application):
-    ''' Setup/Teardown services
-    '''
+def setup_aiojobs_scheduler(app: web.Application):
+    aiojobs_setup(app)
 
-    app[REDIS] = redis = Redis(host='localhost', port=6379, max_connections=10)
-    app[CONNECTIONS] = connections = {}
+    async def cleanup_context(app: web.Application):
+        await app[AIOJOBS_SCHEDULER].spawn(read_redis(app[REDIS], app[CONNECTIONS]))
+        await app[AIOJOBS_SCHEDULER].spawn(clear_redis(app[REDIS]))
 
-    await app[AIOJOBS_SCHEDULER].spawn(read_redis(redis, connections))
-    await app[AIOJOBS_SCHEDULER].spawn(clear_redis(redis))
+        yield
 
-    yield
+    app.cleanup_ctx.append(cleanup_context)
 
-    with suppress(RedisError):
-        await redis.aclose()
 
-    connections.clear()
+def setup_redis(app: web.Application):
+    async def cleanup_context(app: web.Application):
+        app[REDIS] = redis = Redis(host='localhost', port=6379, max_connections=10)
+
+        yield
+
+        with suppress(RedisError):
+            await redis.aclose()
+
+    app.cleanup_ctx.append(cleanup_context)
+
+
+def setup_connections(app: web.Application):
+    async def cleanup_context(app: web.Application):
+        app[CONNECTIONS] = connections = {}
+
+        yield
+
+        connections.clear()
+
+    app.cleanup_ctx.append(cleanup_context)
+
+
+def setup_routes(app: web.Application):
+    app.router.add_view('/api/messanger/connect', view.MessangerView)
+    app.router.add_view('/api/connection', view.ConnectionView)

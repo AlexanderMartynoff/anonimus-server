@@ -1,29 +1,54 @@
-from typing import Callable, Union, Awaitable
-from asyncio import sleep
-from aiohttp import web
-from aiohttp.test_utils import TestClient, BaseTestServer
+from typing import Any
 from pytest_aiohttp.plugin import AiohttpClient
-from redis.asyncio import Redis
-from anonimus.server.view import MessangerView, ConnectionView
-from anonimus.server.setup import cleanup_context
-from aiojobs.aiohttp import setup as aiojobs_setup
+from anonimus.server.setup import CONNECTIONS
+from anonimus.server.testing import create_app
 
 
-async def test_websocket(aiohttp_client: Callable[..., Awaitable[TestClient]]):
-    app = web.Application()
+UUID = 'anonimus-test'
 
-    aiojobs_setup(app)
+HTTP_CLIENT_OPTIONS: dict[str, Any] = {
+    'cookies': {'uuid': UUID},
+}
 
-    app.cleanup_ctx.append(cleanup_context)
 
-    app.router.add_view('/connect', MessangerView)
+async def test_connection_view(aiohttp_client: AiohttpClient):
+    app = create_app()
+    client = await aiohttp_client(app, **HTTP_CLIENT_OPTIONS)
 
-    client = await aiohttp_client(app, cookies={'_uuid': 'none'})
+    async with client.ws_connect('/api/messanger/connect'):
+        response = await client.get('/api/connection')
+        connections = await response.json()
 
-    ws = await client.ws_connect('/connect')
+        assert connections == [UUID]
 
-    msg = await ws.receive()
 
-    assert msg == ''
+async def test_messanger_view(aiohttp_client: AiohttpClient):
+    app = create_app()
+    client = await aiohttp_client(app, **HTTP_CLIENT_OPTIONS)
 
-    await ws.close()
+    async with client.ws_connect('/api/messanger/connect'):
+        assert UUID in app[CONNECTIONS]
+
+    assert len(app[CONNECTIONS]) == 0
+
+
+async def test_messanger_view_connect(aiohttp_client: AiohttpClient):
+    app = create_app()
+    client = await aiohttp_client(app, **HTTP_CLIENT_OPTIONS)
+
+    async with client.ws_connect('/api/messanger/connect') as websocket:
+        # receive and skip 'Online' message
+        await websocket.receive_json(timeout=3)
+
+        text = 'Helo, World!'
+
+        await websocket.send_json({
+            'type': 'Message',
+            'text': text,
+            'chat': UUID,
+            'sender': 'sender',
+        })
+
+        message = await websocket.receive_json(timeout=3)
+
+        assert message['text'] == text

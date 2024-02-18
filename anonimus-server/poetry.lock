@@ -154,6 +154,28 @@ files = [
 ]
 
 [[package]]
+name = "fakeredis"
+version = "2.21.1"
+description = "Python implementation of redis API, can be used for testing purposes."
+optional = false
+python-versions = ">=3.7,<4.0"
+files = [
+    {file = "fakeredis-2.21.1-py3-none-any.whl", hash = "sha256:5d1b113a92c1e5dd6e8055008d9204ace4c125e104f04ac08cca4296bc6c78d4"},
+    {file = "fakeredis-2.21.1.tar.gz", hash = "sha256:773bd03c38fe745c0c03c5b4ebb92521a25d3306f903c0ca65706bf65cf19e2a"},
+]
+
+[package.dependencies]
+redis = ">=4"
+sortedcontainers = ">=2,<3"
+
+[package.extras]
+bf = ["pyprobables (>=0.6,<0.7)"]
+cf = ["pyprobables (>=0.6,<0.7)"]
+json = ["jsonpath-ng (>=1.6,<2.0)"]
+lua = ["lupa (>=1.14,<3.0)"]
+probabilistic = ["pyprobables (>=0.6,<0.7)"]
+
+[[package]]
 name = "frozenlist"
 version = "1.4.1"
 description = "A list-like structure which implements collections.abc.MutableSequence"
@@ -529,6 +551,17 @@ hiredis = ["hiredis (>=1.0.0)"]
 ocsp = ["cryptography (>=36.0.1)", "pyopenssl (==20.0.1)", "requests (>=2.26.0)"]
 
 [[package]]
+name = "sortedcontainers"
+version = "2.4.0"
+description = "Sorted Containers -- Sorted List, Sorted Dict, Sorted Set"
+optional = false
+python-versions = "*"
+files = [
+    {file = "sortedcontainers-2.4.0-py2.py3-none-any.whl", hash = "sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0"},
+    {file = "sortedcontainers-2.4.0.tar.gz", hash = "sha256:25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb88"},
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.9.0"
 description = "Backported and Experimental Type Hints for Python 3.8+"
@@ -659,4 +692,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "b860a00cf1dfdcaf837934cdff9943bc5aec3884ef66d7d7f219e8108f7de86e"
+content-hash = "28f83b771ccaa0de03734051f791fad3f05a1a882b4e80e9b98f12288cf6b628"

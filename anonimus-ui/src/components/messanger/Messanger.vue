@@ -59,7 +59,7 @@ export default {
   setup(props, ctx) {
     const websocket = inject('websocket')
 
-    const showLeftBar = ref(true)
+    const showLeftBar = ref(false)
     const leftBarWidth = computed(() => props.leftBarWidth)
     const leftBarBreakpoint = computed(() => props.leftBarBreakpoint)
 
