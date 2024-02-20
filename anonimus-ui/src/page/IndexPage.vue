@@ -1,40 +1,38 @@
 <template>
-  <div>
-    <q-layout view="hHh lpr fFf">
-      <q-header elevated>
-        <toolbar-header/>
-      </q-header>
+  <q-layout view="hHh lpr fFf">
+    <q-header elevated>
+      <header-toolbar/>
+    </q-header>
 
-      <q-page-container>
-        <q-page class="column flex-center">
-          <user-list :users="userStore.users"/>
-        </q-page>
-      </q-page-container>
-    </q-layout>
-  </div>
+    <q-page-container>
+      <q-page class="column flex-center">
+        <user-list :users="users"/>
+      </q-page>
+    </q-page-container>
+  </q-layout>
 </template>
 
 
 <script>
-import { ref } from 'vue'
-import { useUserStore } from '../stores/user.js'
+import { ref, computed } from 'vue'
+import { useStore as useUserStore } from '../stores/user.js'
 import UserList from '../components/user/UserList.vue'
-import ToolbarHeader from '../components/layout/ToolbarHeader.vue'
+import HeaderToolbar from '../components/layout/HeaderToolbar.vue'
 
 
 export default {
-  name: 'WelcomPage',
+  name: 'IndexPage',
   components: {
     UserList,
-    ToolbarHeader,
+    HeaderToolbar,
   },
 
-  setup(props) {
+  setup() {
     const userStore = useUserStore()
 
     return {
       slide: ref('style'),
-      userStore,
+      users: computed(() => userStore.users),
     }
   },
 }

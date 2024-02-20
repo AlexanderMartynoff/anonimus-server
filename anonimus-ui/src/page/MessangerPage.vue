@@ -1,34 +1,107 @@
 <template>
-  <messanger/>
+  <q-layout view="lHh Lpr lFf" class="bg-white">
+    <q-header>
+      <header-toolbar>
+        <q-btn flat icon="menu" class="q-mr-sm" @click="onBtnMenuClick"/>
+      </header-toolbar>
+    </q-header>
+
+    <q-drawer bordered side="left" :width="leftBarWidth" :breakpoint="leftBarBreakpoint" v-model="showLeftBar">
+      <q-toolbar class="bg-primary text-white">
+        <q-toolbar-title>[ contacts ]</q-toolbar-title>
+      </q-toolbar>
+      <messanger-contact-list @select="onContactSelect"/>
+    </q-drawer>
+
+    <q-page-container>
+      <messanger-chat :messages="messages" :chat="chat"/>
+    </q-page-container>
+
+    <q-footer>
+      <q-toolbar>
+        <messanger-message-toolbar @send="onBtnSendClick" :chat="chat"/>
+      </q-toolbar>
+    </q-footer>
+  </q-layout>
 </template>
 
 <script>
-import { ref, computed, onMounted, inject } from 'vue'
-import Messanger from '../components/messanger/Messanger.vue'
+import { scroll } from 'quasar'
+import { ref, computed, inject, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import MessangerChat from '../components/messanger/MessangerChat.vue'
+import MessangerMessageToolbar from '../components/messanger/MessangerMessageToolbar.vue'
+import MessangerContactList from '../components/messanger/MessangerContactList.vue'
+import HeaderToolbar from '../components/layout/HeaderToolbar.vue'
+
 
 export default {
-  name: 'IndexPage',
-
+  name: 'MessangerPage',
   components: {
-    Messanger,
+    MessangerChat,
+    MessangerMessageToolbar,
+    MessangerContactList,
+    HeaderToolbar,
   },
-
   props: {
-    container: Boolean,
+    leftBarWidth: {
+      type: Number,
+      default: 350,
+    },
+    leftBarBreakpoint: {
+      type: Number,
+      default: 690,
+    },
+    chat: {
+      type: String,
+    },
   },
 
-  setup(props) {
+  setup(props, ctx) {
     const websocket = inject('websocket')
 
-    const tab = ref('mails')
-    const container = computed(() => props.container)
+    const showLeftBar = ref(false)
+    const leftBarWidth = computed(() => props.leftBarWidth)
+    const leftBarBreakpoint = computed(() => props.leftBarBreakpoint)
 
-    onMounted(async () => {
+    const messages = ref([])
+    const chat = ref(props.chat)
+
+    const onMessage = (message) => {
+      messages.value.push(message)
+    }
+
+    onMounted(() => {
+      websocket.on('Message', onMessage, false)
+    })
+
+    onUnmounted(() => {
+      websocket.off(onMessage)
+    })
+
+    watch(messages.value, () => {
+      nextTick(() => {
+        scroll.setVerticalScrollPosition(window, document.body.scrollHeight - window.innerHeight, 300)
+      })
     })
 
     return {
-      tab,
-      container,
+      showLeftBar,
+      leftBarWidth,
+      leftBarBreakpoint,
+      messages,
+      chat,
+
+      onContactSelect(contact) {
+      },
+
+      onBtnMenuClick() {
+        showLeftBar.value = !showLeftBar.value
+      },
+
+      onBtnSendClick(message) {
+        websocket.push(message)
+        messages.value.push(message)
+      },
     }
   },
 }

@@ -62,4 +62,4 @@ class MessangerView(WebsocketView, AiohttpRequestMixin):
 
 class ConnectionView(View, AiohttpRequestMixin):
     async def get(self) -> Response:
-        return json_response([uuid for uuid in self.request.app[CONNECTIONS]])
+        return json_response([{'name': uuid} for uuid in self.request.app[CONNECTIONS]])

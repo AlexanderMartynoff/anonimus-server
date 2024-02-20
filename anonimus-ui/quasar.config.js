@@ -7,7 +7,12 @@ module.exports = configure(function (ctx) {
         screen: {
           bodyClasses: true,
         }
-      }
+      },
+      plugins: [
+        'LocalStorage',
+        'Cookies',
+        'Dialog',
+      ]
     },
     supportTS: false,
     boot: [],

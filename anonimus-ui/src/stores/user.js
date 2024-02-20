@@ -1,26 +1,48 @@
-import { ref, computed } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import { defineStore } from "pinia"
+import { LocalStorage } from 'quasar'
 import { fetchAs } from '../api/fetch.js'
 
 
-const useUserStore = defineStore('user', () => {
-    const records = ref([])
-    const users = computed(() => records.value)
+const useStore = defineStore('user', () => {
+    // users
+    const users = ref([])
 
     async function fetchUsers() {
-        const users = await fetchAs('/api/connection', (uuids) => {
-            return uuids.map((uuid) => ({name: uuid}))
-        })
-
-        records.value = users
+        users.value = await fetchAs('/api/connection')
     }
+
+    // user
+    const user = reactive({})
+
+    watch(user, ({name}) => {
+        LocalStorage.set('user', {
+            name,
+        })
+    })
+
+    async function fetchUser() {
+        const value = LocalStorage.getItem('user')
+
+        if (value) {
+            updateUser(value)
+        }
+    }
+
+    async function updateUser({name}) {
+        user.name = name
+    }
+
+    fetchUser()
 
     return {
         users,
         fetchUsers,
+        user,
+        updateUser,
     }
 })
 
 export {
-    useUserStore,
+    useStore,
 }

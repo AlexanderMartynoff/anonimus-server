@@ -3,19 +3,20 @@
 </template>
 
 <script>
-import cookie from 'js-cookie'
-import { onMounted, onUnmounted, provide } from 'vue'
+import { useQuasar } from 'quasar'
+import { onUnmounted, provide, watch } from 'vue'
 import { WebSocketQueue } from './api/websocket.js'
-import { v4 } from 'uuid'
-import { useUserStore } from './stores/user.js'
+import { useStore as useUserStore } from './stores/user.js'
 
 
 export default {
   name: 'App',
 
   setup () {
+    const quasar = useQuasar()
     const userStore = useUserStore()
-    let ref = localStorage.getItem('ref')
+
+    let ref = quasar.localStorage.getItem('ref')
 
     if (!ref) {
       ref = '0-0'
@@ -23,35 +24,44 @@ export default {
 
     const websocket = new WebSocketQueue(`ws://${location.host}/api/messanger/connect?ref=${ref}`)
 
-    if (!cookie.get('uuid')) {
-      cookie.set('uuid', v4())
-    }
-
-    const uuid = cookie.get('uuid')
-
-    const onPeopleChange = async () => {
+    const onConnectionsChange = () => {
       userStore.fetchUsers()
     }
 
-    onMounted(() => {
-      websocket.start()
-      websocket.on('Any', (record) => {
-        if (record.id) {
-          localStorage.setItem('ref', record.id)
-        }
-      }, false)
+    const onUserChange = (user) => {
+      quasar.cookies.set('uuid', user.name)
 
-      websocket.on('Online', onPeopleChange, false)
-    })
+      if (websocket.active) {
+        websocket.stop()
+        websocket.on('Close', () => {
+          websocket.start()
+        })
+        return
+      }
+
+      websocket.start()
+    }
+
+    watch(userStore.user, (user) => {
+      onUserChange(user)
+    }, {immediate: true})
 
     onUnmounted(() => {
-      websocket.off(onPeopleChange)
+      websocket.off(onConnectionsChange)
       websocket.stop()
     })
 
     websocket.on('Open', () => {
-      websocket.subscribe([uuid, 'Message', 'Online'])
+      websocket.subscribe(['Message', 'Online'])
     }, false)
+
+    websocket.on('Any', (record) => {
+        if (record.id) {
+          quasar.localStorage.set('ref', record.id)
+        }
+      }, false)
+
+    websocket.on('Online', onConnectionsChange, false)
 
     provide('websocket', websocket)
     provide('uuid', uuid)
