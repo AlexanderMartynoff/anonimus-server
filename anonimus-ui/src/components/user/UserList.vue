@@ -6,7 +6,7 @@
       <q-item clickable v-ripple v-for="user in users" @click="onUserClick(user)">
         <q-item-section avatar>
           <q-avatar>
-            <img src="https://cdn.quasar.dev/img/avatar2.jpg">
+            <img src="/static/user.png">
           </q-avatar>
         </q-item-section>
 
@@ -14,7 +14,7 @@
           <q-item-label lines="1">{{user.name}}</q-item-label>
           <q-item-label caption lines="2">
             <span class="text-weight-bold">
-              <span v-if="user.name == uuid">Me</span>
+              <span v-if="user.name == me.name">Me</span>
             </span> ///
           </q-item-label>
         </q-item-section>
@@ -30,9 +30,9 @@
 
 
 <script>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { inject } from 'vue'
-
+import { useStore as useChatStore } from '../../stores/chat.js'
 
 export default {
   name: 'UsersList',
@@ -40,18 +40,27 @@ export default {
   props: {
     users: {
       type: Array,
-      default: [],
     },
+    me: {
+      type: Object,
+    }
   },
 
   setup(props) {
-    const uuid = inject('uuid')
     const router = useRouter()
+    const chatStore = useChatStore()
+
+    const me = computed(() => props.me)
 
     return {
-      uuid,
+      me,
       onUserClick(user) {
-        router.push({name: 'messanger', params: {chat: user.name}})
+        router.push({
+          name: 'messanger',
+          params: {chat: user.name},
+        })
+
+        chatStore.addChat(user.name)
       },
     }
   },

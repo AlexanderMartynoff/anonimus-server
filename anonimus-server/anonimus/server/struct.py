@@ -16,7 +16,6 @@ class Record(Struct, kw_only=True):
 class Message(Record, kw_only=True, tag=True):
     text: str
     chat: str
-    sender: str
 
 
 class Identify(Record, kw_only=True, tag=True):
@@ -25,6 +24,7 @@ class Identify(Record, kw_only=True, tag=True):
 
 class On(Record, kw_only=True, tag=True):
     name: str
+
 
 class Off(Record, kw_only=True, tag=True):
     name: str

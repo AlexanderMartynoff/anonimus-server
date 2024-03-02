@@ -10,3 +10,8 @@ ssl = true
 [server.worker]
 number = 1
 type = 'processing'
+
+
+[redis]
+port = 1
+type = 'processing'

@@ -1,12 +1,12 @@
 <template>
   <q-layout view="hHh lpr fFf">
-    <q-header elevated>
+    <q-header>
       <header-toolbar/>
     </q-header>
 
     <q-page-container>
       <q-page class="column flex-center">
-        <user-list :users="users"/>
+        <user-list :users="users" :me="user"/>
       </q-page>
     </q-page-container>
   </q-layout>
@@ -14,7 +14,7 @@
 
 
 <script>
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useStore as useUserStore } from '../stores/user.js'
 import UserList from '../components/user/UserList.vue'
 import HeaderToolbar from '../components/layout/HeaderToolbar.vue'
@@ -31,8 +31,8 @@ export default {
     const userStore = useUserStore()
 
     return {
-      slide: ref('style'),
       users: computed(() => userStore.users),
+      user: computed(() => userStore.user),
     }
   },
 }

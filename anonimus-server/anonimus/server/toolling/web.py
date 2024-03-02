@@ -55,5 +55,5 @@ class AiohttpRequestMixin:
     request: Request
 
     @property
-    def uuid(self):
+    def user(self) -> str:
         return self.request.cookies['uuid']

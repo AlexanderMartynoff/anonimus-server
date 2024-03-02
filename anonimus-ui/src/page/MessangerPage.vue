@@ -6,32 +6,31 @@
       </header-toolbar>
     </q-header>
 
-    <q-drawer bordered side="left" :width="leftBarWidth" :breakpoint="leftBarBreakpoint" v-model="showLeftBar">
-      <q-toolbar class="bg-primary text-white">
-        <q-toolbar-title>[ contacts ]</q-toolbar-title>
-      </q-toolbar>
-      <messanger-contact-list @select="onContactSelect"/>
+    <q-drawer bordered side="left" :breakpoint="leftBarBreakpoint" v-model="showLeftBar">
+      <messanger-contact-list @select="onChatSelect" :chats="chats" :active-chat-name="chat"/>
     </q-drawer>
 
     <q-page-container>
-      <messanger-chat :messages="messages" :chat="chat"/>
+      <messanger-chat :messages="messages" :chat="chat" :user="user"/>
     </q-page-container>
 
     <q-footer>
       <q-toolbar>
-        <messanger-message-toolbar @send="onBtnSendClick" :chat="chat"/>
+        <messanger-message-toolbar @send="onBtnSendClick" :chat="chat" :user="user"/>
       </q-toolbar>
     </q-footer>
   </q-layout>
 </template>
 
 <script>
-import { scroll } from 'quasar'
+import { scroll, useQuasar } from 'quasar'
 import { ref, computed, inject, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import MessangerChat from '../components/messanger/MessangerChat.vue'
 import MessangerMessageToolbar from '../components/messanger/MessangerMessageToolbar.vue'
 import MessangerContactList from '../components/messanger/MessangerContactList.vue'
 import HeaderToolbar from '../components/layout/HeaderToolbar.vue'
+import { useStore as useUserStore } from '../stores/user.js'
+import { useStore as useChatStore } from '../stores/chat.js'
 
 
 export default {
@@ -56,15 +55,25 @@ export default {
     },
   },
 
-  setup(props, ctx) {
+  setup(props) {
+    const quasar = useQuasar()
     const websocket = inject('websocket')
-
-    const showLeftBar = ref(false)
-    const leftBarWidth = computed(() => props.leftBarWidth)
-    const leftBarBreakpoint = computed(() => props.leftBarBreakpoint)
+    const userStore = useUserStore()
+    const chatStore = useChatStore()
 
     const messages = ref([])
+    const showLeftBar = ref(false)
+
+    if (quasar.platform.is.desktop) {
+      showLeftBar.value = true
+    }
+
+    const leftBarWidth = computed(() => props.leftBarWidth)
+    const leftBarBreakpoint = computed(() => props.leftBarBreakpoint)
     const chat = ref(props.chat)
+
+    const user = computed(() => userStore.user)
+    const chats = computed(() => chatStore.chats)
 
     const onMessage = (message) => {
       messages.value.push(message)
@@ -90,8 +99,11 @@ export default {
       leftBarBreakpoint,
       messages,
       chat,
+      chats,
+      user,
 
-      onContactSelect(contact) {
+      onChatSelect({name}) {
+        chat.value = name
       },
 
       onBtnMenuClick() {

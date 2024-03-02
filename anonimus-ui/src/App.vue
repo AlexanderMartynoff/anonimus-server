@@ -8,7 +8,6 @@ import { onUnmounted, provide, watch } from 'vue'
 import { WebSocketQueue } from './api/websocket.js'
 import { useStore as useUserStore } from './stores/user.js'
 
-
 export default {
   name: 'App',
 
@@ -29,7 +28,7 @@ export default {
     }
 
     const onUserChange = (user) => {
-      quasar.cookies.set('uuid', user.name)
+      quasar.cookies.set('uuid', user.name, {sameSite: 'Lax'})
 
       if (websocket.active) {
         websocket.stop()
@@ -64,7 +63,6 @@ export default {
     websocket.on('Online', onConnectionsChange, false)
 
     provide('websocket', websocket)
-    provide('uuid', uuid)
   },
 }
 </script>
