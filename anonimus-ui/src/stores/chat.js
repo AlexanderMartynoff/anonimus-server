@@ -3,28 +3,41 @@ import { defineStore } from 'pinia'
 
 
 const useStore = defineStore('chat', () => {
-	const chats = reactive({})
+  const chats = reactive({})
 
-	return {
-		addChat(name) {
-			chats[name] = {
-				name,
-				letter: name.substring(0, 1),
-				messages: [],
-			}
-		},
+  return {
+    addChat(name) {
+      if (name in chats) {
+        throw Error('Chat exists')
+      }
 
-		removeChat(name) {
-			delete chats[name]
-		},
-		chats,
-	}
+      chats[name] = {
+        name,
+        letter: name.substring(0, 1),
+        messages: [],
+      }
+    },
+
+    removeChat(name) {
+      delete chats[name]
+    },
+
+    pushChatMessage(name, message) {
+      chats[name].messages.push(message)
+    },
+
+    hasChat(name) {
+      return name in chats
+    },
+
+    chats,
+  }
 }, {
-	persist: {
-		paths: ['chats']
-	},
+  persist: {
+    paths: ['chats']
+  },
 })
 
 export {
-	useStore,
+  useStore,
 }

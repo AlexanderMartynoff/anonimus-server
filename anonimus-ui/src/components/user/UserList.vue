@@ -15,7 +15,7 @@
           <q-item-label caption lines="2">
             <span class="text-weight-bold">
               <span v-if="user.name == me.name">Me</span>
-            </span> ///
+            </span>
           </q-item-label>
         </q-item-section>
 
@@ -30,7 +30,7 @@
 
 
 <script>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore as useChatStore } from '../../stores/chat.js'
 
@@ -60,7 +60,9 @@ export default {
           params: {chat: user.name},
         })
 
-        chatStore.addChat(user.name)
+        if (!chatStore.hasChat(user.name)) {
+          chatStore.addChat(user.name)
+        }
       },
     }
   },

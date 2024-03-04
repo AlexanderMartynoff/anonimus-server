@@ -12,11 +12,28 @@
           {{chat.letter}}
         </q-avatar>
       </q-item-section>
+
       <q-item-section>
         {{chat.name}}
       </q-item-section>
+      <q-item-section side>
+        <q-btn flat dense round icon="delete" @click.prevent.stop="onDeleteClick(chat)"/>
+      </q-item-section>
     </q-item>
   </q-list>
+
+  <q-dialog v-model="confirm" persistent>
+    <q-card class="bg-primary text-white">
+      <q-card-section>
+        <span class="q-ml-sm">Are you sure?</span>
+      </q-card-section>
+
+      <q-card-actions align="right">
+        <q-btn flat label="No" color="primary" v-close-popup class="text-white"/>
+        <q-btn flat label="Yes" color="primary" v-close-popup class="text-white"/>
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script>
@@ -36,11 +53,17 @@ export default {
 
   setup(props, ctx) {
     const tab = ref('people')
+    const confirm = ref(false)
+
     return {
+      confirm,
       tab,
       activeChatName: computed(() => props.activeChatName),
       onSelect(chat) {
         ctx.emit('select', chat)
+      },
+      onDeleteClick() {
+        confirm.value = true
       },
     }
   },

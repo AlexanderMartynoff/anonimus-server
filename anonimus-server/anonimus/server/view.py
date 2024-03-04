@@ -13,10 +13,10 @@ class MessangerView(WebsocketView, AiohttpRequestMixin):
     async def open(self) -> None:
         connections = self.request.app[CONNECTIONS]
 
-        if self.user in connections:
-            raise KeyError(f'UUID "{self.user}" already connected')
+        if self.id in connections:
+            raise KeyError(f'UUID "{self.id}" already connected')
 
-        connections[self.user] = Connection(self.user, self.websocket, {
+        connections[self.id] = Connection(self.id, self.websocket, {
             'ref': self.request.query.get('ref'),
         })
 
@@ -25,8 +25,8 @@ class MessangerView(WebsocketView, AiohttpRequestMixin):
     async def close(self, exception: Exception | None = None) -> None:
         connections = self.request.app[CONNECTIONS]
 
-        if self.user in connections:
-            del connections[self.user]
+        if self.id in connections:
+            del connections[self.id]
 
         await self._broadcast_send('Close')
 
@@ -36,7 +36,7 @@ class MessangerView(WebsocketView, AiohttpRequestMixin):
     @logger.catch(message='Websocket message processing')
     async def message(self, message: WSMessage) -> None:
         redis = self.request.app[REDIS]
-        connection = self.request.app[CONNECTIONS][self.user]
+        connection = self.request.app[CONNECTIONS][self.id]
 
         match decode(message.data, type=On | Off | Message):
             case On(name=name):
@@ -48,7 +48,7 @@ class MessangerView(WebsocketView, AiohttpRequestMixin):
 
             case Message(text=text, chat=chat, uuid=uuid):
                 for member in await find_chat_members(redis, chat):
-                    await put_message(redis, member, {'type': 'Message', 'uuid': str(uuid), 'text': text, 'sender': self.user, 'chat': chat})
+                    await put_message(redis, member, {'type': 'Message', 'uuid': str(uuid), 'text': text, 'sender': self.id, 'chat': chat})
 
     @logger.catch(message='Onchange webscoket connections')
     async def _broadcast_send(self, event: str | None = None) -> None:

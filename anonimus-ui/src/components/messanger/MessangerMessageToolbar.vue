@@ -6,7 +6,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { ref, unref, reactive, onMounted, onBeforeUnmount } from 'vue'
 
 export default {
   name: 'MessangerMessageToolbar',
@@ -64,13 +64,17 @@ export default {
     }
 
     onMounted(() => {
-      input.value.nativeEl.addEventListener('keydown', onKeyDown)
-      input.value.nativeEl.addEventListener('keyup', onKeyUp)
+      let {nativeEl} = unref(input)
+
+      nativeEl.addEventListener('keydown', onKeyDown)
+      nativeEl.addEventListener('keyup', onKeyUp)
     })
 
     onBeforeUnmount(() => {
-      input.value.nativeEl.removeEventListener('keydown', onKeyDown)
-      input.value.nativeEl.removeEventListener('keyup', onKeyUp)
+      let {nativeEl} = unref(input)
+
+      nativeEl.removeEventListener('keydown', onKeyDown)
+      nativeEl.removeEventListener('keyup', onKeyUp)
     })
 
     return {

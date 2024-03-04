@@ -1,9 +1,8 @@
 <template>
   <q-toolbar>
     <slot />
-    <q-btn flat dense icon="home" @click="onHomeClick()"/>
     <q-space />
-    <q-btn flat dense icon="person" @click="onPersonClick()">{{user}}</q-btn>
+    <q-btn flat icon="settings" @click="onSettingsClick()"></q-btn>
   </q-toolbar>
 </template>
 
@@ -19,18 +18,13 @@ export default {
 
   setup() {
     const quasar = useQuasar()
-    const router = useRouter()
     const userStore = useUserStore()
 
     const user = computed(() => userStore.user.name)
 
     return {
       user,
-      onHomeClick() {
-        router.push({ name: 'index' })
-      },
-
-      onPersonClick() {
+      onSettingsClick() {
         quasar.dialog({
           component: UserFormDialog,
           componentProps: {

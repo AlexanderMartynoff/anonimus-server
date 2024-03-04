@@ -28,7 +28,7 @@ export default {
     }
 
     const onUserChange = (user) => {
-      quasar.cookies.set('uuid', user.name, {sameSite: 'Lax'})
+      quasar.cookies.set('id', user.name, {sameSite: 'Lax'})
 
       if (websocket.active) {
         websocket.stop()
@@ -55,10 +55,10 @@ export default {
     }, false)
 
     websocket.on('Any', (record) => {
-        if (record.id) {
-          quasar.localStorage.set('ref', record.id)
-        }
-      }, false)
+      if (record.id) {
+        quasar.localStorage.set('ref', record.id)
+      }
+    }, false)
 
     websocket.on('Online', onConnectionsChange, false)
 

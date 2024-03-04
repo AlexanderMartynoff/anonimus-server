@@ -1,7 +1,9 @@
 <template>
   <q-layout view="hHh lpr fFf">
     <q-header>
-      <header-toolbar/>
+      <header-toolbar>
+        <q-btn flat icon="chat" @click="onChatClick()"/>
+      </header-toolbar>
     </q-header>
 
     <q-page-container>
@@ -15,6 +17,7 @@
 
 <script>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useStore as useUserStore } from '../stores/user.js'
 import UserList from '../components/user/UserList.vue'
 import HeaderToolbar from '../components/layout/HeaderToolbar.vue'
@@ -28,9 +31,17 @@ export default {
   },
 
   setup() {
+    const router = useRouter()
     const userStore = useUserStore()
 
     return {
+
+      onChatClick() {
+        router.push({
+          name: 'messanger',
+        })
+      },
+
       users: computed(() => userStore.users),
       user: computed(() => userStore.user),
     }

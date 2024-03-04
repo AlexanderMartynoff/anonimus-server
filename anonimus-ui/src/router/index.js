@@ -11,7 +11,7 @@ const routes = [
   },
   {
     name: 'messanger',
-    path: '/messanger/:chat',
+    path: '/messanger/:chat?',
     component: MessangerPage,
     props: true,
   },
