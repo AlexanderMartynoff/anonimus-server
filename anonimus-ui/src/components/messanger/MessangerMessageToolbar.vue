@@ -6,7 +6,9 @@
 </template>
 
 <script>
-import { ref, unref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { ref, unref, onMounted, onBeforeUnmount } from 'vue'
+import { v4 } from 'uuid'
+
 
 export default {
   name: 'MessangerMessageToolbar',
@@ -34,11 +36,13 @@ export default {
 
       ctx.emit(
         'send',
-        reactive({
+        {
+          id: v4(),
+          sequence: Date.now(),
           text: text.value,
           chat: props.chat,
           sender: props.user.name,
-        })
+        }
       )
 
       text.value = null

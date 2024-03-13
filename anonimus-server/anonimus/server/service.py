@@ -1,3 +1,5 @@
+import asyncio
+from collections import defaultdict
 from redis.asyncio import Redis
 from redis.typing import KeyT, StreamIdT
 from aiohttp.web_ws import WebSocketResponse
@@ -21,19 +23,32 @@ async def read_redis(redis: Redis, connections: dict[str, struct.Connection[WebS
         k: connections[k].context.get('ref') or '0-0' for k in connections
     }
 
-    for stream, messages in await redis.xread(streams=streams):
-        uuid: str = stream.decode()
+    decoders = defaultdict(
+        lambda: lambda v: v.decode(),
+        sequence=int,
+        time=int,
+    )
 
-        if uuid not in connections:
+    for stream, records in await redis.xread(streams=streams):
+        connection = connections.get(stream.decode())
+
+        if not connection:
             continue
 
-        connection = connections[uuid]
+        for ref, record in records:
+            reference = ref.decode()
 
-        for id, message in messages:
-            await connection.socket.send_json(
-                {'id': id.decode()} | {k.decode(): v.decode() for k, v in message.items()}
-            )
-            connection.context['ref'] = id
+            message = {}
+
+            for k, v in record.items():
+                key = k.decode()
+                value = decoders[key](v)
+
+                message[key] = value
+
+            asyncio.ensure_future(connection.socket.send_json(message | {'ref': reference}))
+
+            connection.context['ref'] = reference
 
 
 @repeat(Exception, timeout=3, exception_timeout=2)

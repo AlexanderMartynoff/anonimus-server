@@ -6,7 +6,7 @@
   </q-toolbar>
 
   <q-list separator>
-    <q-item v-for="(chat, name) in chats" clickable v-ripple :active="name === activeChatName" active-class="bg-grey-4 text-black" @click="onSelect(chat)">
+    <q-item v-for="(chat, name) in chats" :key="name" clickable v-ripple :active="name === activeChatName" active-class="bg-grey-4 text-black" @click="onSelect(chat)">
       <q-item-section avatar>
         <q-avatar color="primary" text-color="white">
           {{chat.letter}}
@@ -16,8 +16,9 @@
       <q-item-section>
         {{chat.name}}
       </q-item-section>
+
       <q-item-section side>
-        <q-btn flat dense round icon="delete" @click.prevent.stop="onDeleteClick(chat)"/>
+        <q-btn flat dense round icon="delete" @click.stop="onDeleteClick(chat)"/>
       </q-item-section>
     </q-item>
   </q-list>
@@ -40,8 +41,8 @@
 import { computed, ref } from 'vue'
 
 export default {
-  name: 'MessangerContactList',
-  emits: ['select'],
+  name: 'MessangerChatList',
+  emits: ['select', 'scroll-top'],
   props: {
     chats: {
       type: Object,
@@ -59,6 +60,7 @@ export default {
       confirm,
       tab,
       activeChatName: computed(() => props.activeChatName),
+
       onSelect(chat) {
         ctx.emit('select', chat)
       },

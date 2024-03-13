@@ -44,4 +44,4 @@ def setup_connections(app: web.Application):
 
 def setup_routes(app: web.Application):
     app.router.add_view('/api/messanger/connect', view.MessangerView)
-    app.router.add_view('/api/connection', view.ConnectionView)
+    app.router.add_view('/api/online-user', view.OnlineUserView)

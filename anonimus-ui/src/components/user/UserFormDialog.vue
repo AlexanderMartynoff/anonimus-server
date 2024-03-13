@@ -1,5 +1,5 @@
 <template>
-  <q-dialog ref="dialogRef" transition-show="flip-down" transition-hide="flip-up">
+  <q-dialog ref="dialogRef">
     <q-card class="bg-primary text-white">
 
       <q-card-section class="q-pt-none q-pa-md">
@@ -39,13 +39,13 @@ export default {
     }
   },
 
-  setup(props, ctx) {
+  setup(props) {
     const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent()
 
     const user = reactive({})
 
-    watch(props.user, ({name}) => {
-      user.name = name
+    watch(props.user, (value) => {
+      Object.assign(user, value)
     }, {immediate: true})
 
     return {

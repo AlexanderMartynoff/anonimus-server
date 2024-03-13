@@ -4,33 +4,31 @@ from uuid import uuid4, UUID
 from msgspec import Struct, field
 
 
-class Media(Struct, kw_only=True):
-    value: bytes
 
-
-class Record(Struct, kw_only=True):
-    uuid: UUID = field(default_factory=uuid4)
+class Record(Struct, kw_only=True, tag=str.lower):
     time: float = field(default_factory=time)
 
 
-class Message(Record, kw_only=True, tag=True):
+class Message(Record):
+    id: str
     text: str
     chat: str
+    sequence: int
 
 
-class Identify(Record, kw_only=True, tag=True):
+class Identify(Record):
     name: str
 
 
-class On(Record, kw_only=True, tag=True):
+class On(Record):
     name: str
 
 
-class Off(Record, kw_only=True, tag=True):
+class Off(Record):
     name: str
 
 
-class Status(Record, kw_only=True, tag=True):
+class Status(Record):
     class Value(enum.Enum):
         ACCEPTED = enum.auto()
         READED = enum.auto()

@@ -1,10 +1,12 @@
 <template>
   <div class="q-pa-md messanger__writer messanger__writer--responsive">
-    <q-chat-message :name="message.sender" avatar="/static/user.png" stamp="7 minutes ago" :sent="message.sender == user.name" text-color="white" bg-color="primary" v-for="message in messages">
-      <div class="messanger__message">
-        {{message.text}}
-      </div>
-    </q-chat-message>
+    <q-infinite-scroll @load="onScrollTop" reverse>
+      <q-chat-message :name="message.sender" avatar="/static/user.png" stamp="7 minutes ago" :sent="message.sender == user.name" text-color="white" bg-color="primary" v-for="message in messages">
+        <div class="messanger__message">
+          {{message.text}}
+        </div>
+      </q-chat-message>
+    </q-infinite-scroll>
   </div>
 </template>
 
@@ -12,6 +14,8 @@
 import { computed } from 'vue'
 
 export default {
+  emits: ['scroll-top'],
+
   name: 'MessangerChat',
   props: {
     messages: {
@@ -22,11 +26,14 @@ export default {
     },
   },
 
-  setup(props) {
+  setup(props, ctx) {
     const user = computed(() => props.user)
 
     return {
       user,
+      onScrollTop(index, done) {
+        ctx.emit('scroll-top', index, done)
+      },
     }
   },
 }

@@ -8,7 +8,7 @@
 
     <q-page-container>
       <q-page class="column flex-center">
-        <user-list :users="users" :me="user"/>
+        <online-user-list :online-users="onlineUsers" @select="onUserSelect"/>
       </q-page>
     </q-page-container>
   </q-layout>
@@ -18,32 +18,39 @@
 <script>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useStore as useUserStore } from '../stores/user.js'
-import UserList from '../components/user/UserList.vue'
+import { useStore } from '../stores/store.js'
+import OnlineUserList from '../components/user/OnlineUserList.vue'
 import HeaderToolbar from '../components/layout/HeaderToolbar.vue'
 
 
 export default {
   name: 'IndexPage',
   components: {
-    UserList,
+    OnlineUserList,
     HeaderToolbar,
   },
 
   setup() {
     const router = useRouter()
-    const userStore = useUserStore()
+    const store = useStore()
 
     return {
-
       onChatClick() {
         router.push({
           name: 'messanger',
         })
       },
 
-      users: computed(() => userStore.users),
-      user: computed(() => userStore.user),
+      onUserSelect(user) {
+        router.push({
+          name: 'messanger',
+          params: {
+            chat: [user.name, store.user.name].sort().join('/'),
+          },
+        })
+      },
+
+      onlineUsers: computed(() => store.onlineUsers),
     }
   },
 }

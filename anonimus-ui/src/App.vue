@@ -4,65 +4,60 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { onUnmounted, provide, watch } from 'vue'
-import { WebSocketQueue } from './api/websocket.js'
-import { useStore as useUserStore } from './stores/user.js'
+import { onUnmounted, onMounted, inject, watch } from 'vue'
+import { useStore } from './stores/store.js'
+
 
 export default {
   name: 'App',
 
-  setup () {
+  setup() {
+    const websocket = inject('websocket')
+    const database = inject('database')
+
     const quasar = useQuasar()
-    const userStore = useUserStore()
+    const store = useStore()
 
-    let ref = quasar.localStorage.getItem('ref')
+    watch(store.user, (user) => {
+      const name = quasar.cookies.get('id')
 
-    if (!ref) {
-      ref = '0-0'
-    }
-
-    const websocket = new WebSocketQueue(`ws://${location.host}/api/messanger/connect?ref=${ref}`)
-
-    const onConnectionsChange = () => {
-      userStore.fetchUsers()
-    }
-
-    const onUserChange = (user) => {
-      quasar.cookies.set('id', user.name, {sameSite: 'Lax'})
-
-      if (websocket.active) {
-        websocket.stop()
-        websocket.on('Close', () => {
+      if (name && name == user.name) {
+        if (!websocket.active) {
           websocket.start()
-        })
+        }
         return
       }
 
-      websocket.start()
-    }
+      quasar.cookies.set('id', user.name, {sameSite: 'Lax'})
 
-    watch(userStore.user, (user) => {
-      onUserChange(user)
-    }, {immediate: true})
-
-    onUnmounted(() => {
-      websocket.off(onConnectionsChange)
-      websocket.stop()
+      if (websocket.active) {
+        websocket.on('close', () => {
+          websocket.start()
+        })
+        websocket.stop()
+      } else {
+        websocket.start()
+      }
     })
 
-    websocket.on('Open', () => {
-      websocket.subscribe(['Message', 'Online'])
-    }, false)
+    const onOnlineUsersChange = () => {
+      store.fetchOnlineUsers()
+    }
 
-    websocket.on('Any', (record) => {
-      if (record.id) {
-        quasar.localStorage.set('ref', record.id)
-      }
-    }, false)
+    const onMessageIncome = (message) => {
+      database.messages.put(message)
+    }
 
-    websocket.on('Online', onConnectionsChange, false)
+    onMounted(() => {
+      websocket.on('message', onMessageIncome, false)
+      websocket.on('online', onOnlineUsersChange, false)
+    })
 
-    provide('websocket', websocket)
+    onUnmounted(() => {
+      websocket.off(onMessageIncome)
+      websocket.off(onOnlineUsersChange)
+      websocket.stop()
+    })
   },
 }
 </script>

@@ -7,11 +7,11 @@ class WebSocketQueue {
     this.url = url
     this.timeout = timeout
 
+    this.active = false
+
     this.listeners = []
     this.queue = []
     this.waiters = []
-
-    this.active = false
   }
 
   connect({ onOpen = () => {}, onClose = () => {} }) {
@@ -23,16 +23,16 @@ class WebSocketQueue {
 
     this.socket.onopen = () => {
       onOpen()
-      this.dispatch('Open')
+      this.dispatch('open')
     }
 
     this.socket.onerror = () => {
-      this.dispatch('Error')
+      this.dispatch('error')
     }
 
     this.socket.onclose = () => {
       onClose()
-      this.dispatch('Close')
+      this.dispatch('close')
     }
 
     this.socket.onmessage = (message) => {
@@ -42,7 +42,7 @@ class WebSocketQueue {
         this.dispatch(record.type, record)
       }
 
-      this.dispatch('Any', record)
+      this.dispatch('any', record)
     }
   }
 
@@ -97,7 +97,7 @@ class WebSocketQueue {
     }
   }
 
-  push(message, type = 'Message', flush = true) {
+  push(message, type = 'message', flush = true) {
     this.queue.push(JSON.stringify({
       type,
       ...message,
@@ -138,13 +138,13 @@ class WebSocketQueue {
 
   subscribe(names, callback) {
     for (const name of names) {
-      this.push({name}, 'On')
+      this.push({name}, 'on')
     }
   }
 
   unsubscribe(names, callback) {
     for (const name of names) {
-      this.push({name}, 'Off')
+      this.push({name}, 'off')
     }
   }
 }

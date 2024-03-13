@@ -1,16 +1,15 @@
 <template>
   <q-toolbar>
-    <slot />
-    <q-space />
-    <q-btn flat icon="settings" @click="onSettingsClick()"></q-btn>
+    <slot/>
+    <q-space/>
+    <q-btn flat icon="settings" @click="onSettingsClick()"/>
   </q-toolbar>
 </template>
 
 <script>
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { toRaw } from 'vue'
 import { useQuasar } from 'quasar'
-import { useStore as useUserStore } from '../../stores/user.js'
+import { useStore } from '../../stores/store.js'
 import UserFormDialog from '../user/UserFormDialog.vue'
 
 export default {
@@ -18,20 +17,17 @@ export default {
 
   setup() {
     const quasar = useQuasar()
-    const userStore = useUserStore()
-
-    const user = computed(() => userStore.user.name)
+    const store = useStore()
 
     return {
-      user,
       onSettingsClick() {
         quasar.dialog({
           component: UserFormDialog,
           componentProps: {
-            user: userStore.user,
+            user: store.user,
           },
         }).onOk(user => {
-          userStore.updateUser(user)
+          store.saveUser(toRaw(user))
         })
       },
     }

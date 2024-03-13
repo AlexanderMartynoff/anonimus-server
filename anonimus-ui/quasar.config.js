@@ -1,4 +1,5 @@
-const { configure } = require('quasar/wrappers');
+const { configure } = require('quasar/wrappers')
+
 
 module.exports = configure(function (ctx) {
   return {
@@ -15,12 +16,13 @@ module.exports = configure(function (ctx) {
       ]
     },
     supportTS: false,
-    boot: [],
+    boot: [
+      'service',
+    ],
     extras: [
       'roboto-font',
       'material-icons',
     ],
-
     build: {
       vueRouterMode: 'history',
 
@@ -53,4 +55,4 @@ module.exports = configure(function (ctx) {
       open: false,
     },
   }
-});
+})
