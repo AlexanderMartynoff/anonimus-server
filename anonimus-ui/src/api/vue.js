@@ -8,12 +8,18 @@ function useLiveQuery(querier, {value=[], depends=[]}={}) {
   const query = liveQuery(querier)
   const output = ref(value)
 
-  watch(depends, () => {  
-    subscriber?.unsubscribe()
+  function setup() {
     subscriber = query.subscribe(value => {
       output.value = value
     })
-  }, {immediate: true})
+  }
+
+  setup()
+
+  watch(depends, () => {  
+    subscriber?.unsubscribe()
+    setup()
+  })
 
   onUnmounted(() => {
     subscriber?.unsubscribe()

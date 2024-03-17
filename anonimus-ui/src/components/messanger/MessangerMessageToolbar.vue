@@ -38,10 +38,10 @@ export default {
         'send',
         {
           id: v4(),
-          sequence: Date.now(),
           text: text.value,
-          chat: props.chat,
-          sender: props.user.name,
+          // chat: props.chat,
+          // sender: props.user.name,
+          // receiver: props.chat,
         }
       )
 

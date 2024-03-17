@@ -8,16 +8,16 @@
     </q-header>
 
     <q-drawer bordered side="left" :breakpoint="690" v-model="leftBar">
-      <messanger-chat-list @select="onChatSelect" :chats="chats" :active-chat-name="chat"/>
+      <messanger-chat-list @select="onChatSelect" :chats="chats" :active-chat-name="chat.id"/>
     </q-drawer>
 
     <q-page-container>
-      <messanger-chat :messages="messages" :chat="chat" :user="user" @scroll-top="onChatScrollTop"/>
+      <messanger-chat :messages="messages" :chat="chat.id" :user="user" @scroll-top="onChatScrollTop"/>
     </q-page-container>
 
     <q-footer>
       <q-toolbar>
-        <messanger-message-toolbar @send="onBtnSendClick" :chat="chat" :user="user"/>
+        <messanger-message-toolbar @send="onBtnSendClick" :chat="chat.id" :user="user"/>
       </q-toolbar>
     </q-footer>
   </q-layout>
@@ -58,34 +58,53 @@ export default {
     const store = useStore()
 
     const leftBar = ref(quasar.platform.is.desktop)
-
     const limit = ref(10)
 
-    const user = computed(() => store.user)
-    const chat = computed(() => props.chat)
-
     const chats = useLiveQuery(() => database.chats.toArray())
+    const chat = computed(() => chats.value.filter(chat => chat.id == props.chat).pop(0) || {})
 
     const messages = useLiveQuery(() => {
       return database.messages
         .orderBy('sequence')
+        .filter(message => message.chat == chat.value.id)
         .reverse()
-        // .where('chat')
-        // .equals(chat.value)
         .limit(limit.value)
-        // .reverse()
-        // .sortBy('sequence')
         .toArray()
-        // .then(messages => messages.reverse())
+        .then(messages => messages.reverse())
     }, {
       depends: [chat, limit],
     })
+
+    const user = computed(() => store.user)
 
     watch(messages, () => {
       nextTick(() => {
         scroll.setVerticalScrollPosition(window, document.body.scrollHeight - window.innerHeight, 0)
       })
     }, {immediate: true})
+
+    async function onBtnSendClick(message) {
+      const sequence = await database.messages.where('chat')
+        .equals(chat.value.id)
+        .limit(1)
+        .reverse()
+        .sortBy('sequence')
+        .then(messages => messages.pop(0)?.sequence || 0)
+
+      Object.assign(message, {
+        sequence: sequence + 1,
+        chat: chat.value.id,
+        sender: store.user.name,
+        receiver: chat.value.receiver,
+      })
+
+      await database.messages.add(message).then(() => {
+        websocket.push({
+          type: 'message:request',
+          message: message
+        })
+      })
+    }
 
     return {
       leftBar,
@@ -95,18 +114,18 @@ export default {
       user,
 
       onChatScrollTop(index, onDone) {
-        // limit.value += 2
-        // onDone()
+        limit.value += 10
+        onDone()
       },
 
       onHomeClick() {
         router.push({name: 'index' })
       },
 
-      onChatSelect({name}) {
+      onChatSelect({id}) {
         router.push({
           name: 'messanger',
-          params: {chat: name},
+          params: {chat: id},
         })
       },
 
@@ -114,20 +133,7 @@ export default {
         leftBar.value = !leftBar.value
       },
 
-      async onBtnSendClick(message) {
-        const sequence = await database.messages.where('chat')
-          .equals(chat.value)
-          .limit(1)
-          .reverse()
-          .sortBy('sequence')
-          .then(messages => messages.pop(0)?.sequence || 0)
-
-        message.sequence = sequence + 1
-
-        await database.messages.add(message).then(() => {
-          websocket.push(message)
-        })
-      },
+      onBtnSendClick,
     }
   },
 }

@@ -1,9 +1,10 @@
+from typing import Any
 from contextlib import suppress
 from aiohttp import web
 from aiojobs.aiohttp import AIOJOBS_SCHEDULER, setup as aiojobs_setup
-from anonimus.server.service import REDIS, CONNECTIONS
+from anonimus.server.worker import REDIS, CONNECTIONS
 from redis.asyncio import Redis, RedisError
-from anonimus.server.service import read_redis, clear_redis
+from anonimus.server.worker import read_redis, clear_redis
 from anonimus.server import view
 
 

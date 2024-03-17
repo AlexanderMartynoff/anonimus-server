@@ -13,9 +13,9 @@ export default async ({ app, router, store }) => {
 
   const websocket = new WebSocketQueue(`ws://${location.host}/api/messanger/connect?ref=${ref}`)
 
-  websocket.on('any', (record) => {
-    if (record.ref) {
-      LocalStorage.set('ref', record.ref)
+  websocket.on('any', ({reference}) => {
+    if (reference) {
+      LocalStorage.set('ref', reference)
     }
   }, false)
 
@@ -27,7 +27,7 @@ export default async ({ app, router, store }) => {
   database.version(1).stores({
     users: '++_id',
     messages: '++_id, sequence, chat',
-    chats: '++_id',
+    chats: 'id, name',
   })
 
   app.provide('database', database)

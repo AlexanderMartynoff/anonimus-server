@@ -28,8 +28,8 @@ class WebsocketView(View):
 
         try:
             await self.open()
-            async for message in self._websocket:
-                await self.message(message)
+            async for ws_message in self._websocket:
+                await self.message(ws_message)
         except Exception as exception:
             await self.close(exception)
         else:
@@ -43,7 +43,7 @@ class WebsocketView(View):
     async def close(self, exception: Exception | None = None):
         raise NotImplementedError()
 
-    async def message(self, message: WSMessage):
+    async def message(self, ws_message: WSMessage):
         raise NotImplementedError()
 
     @property

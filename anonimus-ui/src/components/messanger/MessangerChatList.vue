@@ -6,7 +6,7 @@
   </q-toolbar>
 
   <q-list separator>
-    <q-item v-for="(chat, name) in chats" :key="name" clickable v-ripple :active="name === activeChatName" active-class="bg-grey-4 text-black" @click="onSelect(chat)">
+    <q-item v-for="chat in chats" :key="chat.id" clickable v-ripple :active="chat.id === activeChatName" active-class="bg-grey-4 text-black" @click="onSelect(chat)">
       <q-item-section avatar>
         <q-avatar color="primary" text-color="white">
           {{chat.letter}}
@@ -59,11 +59,11 @@ export default {
     return {
       confirm,
       tab,
-      activeChatName: computed(() => props.activeChatName),
 
       onSelect(chat) {
         ctx.emit('select', chat)
       },
+
       onDeleteClick() {
         confirm.value = true
       },

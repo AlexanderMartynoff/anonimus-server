@@ -1,13 +1,15 @@
-import json
+from asyncio import ensure_future
 from redis.exceptions import RedisError
 from msgspec.json import decode
+from msgspec import to_builtins
+from msgspec.structs import replace
 from loguru import logger
 from contextlib import suppress
 from aiohttp.web import json_response, Response, View
-from anonimus.server.struct import Message, On, Off, Connection
-from anonimus.server.api import find_chat_members, add_message
+from anonimus.server.struct import MessageRequest, SubsribeRequest, UnsubscribeRequest, Connection, BROADCAST_RECEIVER
+from anonimus.server.api import fetch_chat_members, add_message
 from anonimus.server.toolling.web import WebsocketView, WSMessage, AiohttpRequestMixin
-from anonimus.server.service import CONNECTIONS, REDIS
+from anonimus.server.worker import CONNECTIONS, REDIS
 
 
 class MessangerView(WebsocketView, AiohttpRequestMixin):
@@ -17,11 +19,11 @@ class MessangerView(WebsocketView, AiohttpRequestMixin):
         if self.id in connections:
             raise KeyError(f'UUID "{self.id}" already connected')
 
-        connections[self.id] = Connection(self.id, self.websocket, {
+        connections[self.id] = Connection(self.id, self.websocket, None, {
             'ref': self.request.query.get('ref'),
         })
 
-        await self._emit('open')
+        self._emit('open')
 
     async def close(self, exception: Exception | None = None) -> None:
         connections = self.request.app[CONNECTIONS]
@@ -29,36 +31,41 @@ class MessangerView(WebsocketView, AiohttpRequestMixin):
         if self.id in connections:
             del connections[self.id]
 
-        await self._emit('close')
+        self._emit('close')
 
         if exception:
             raise exception
 
     @logger.catch(message='Websocket message processing')
-    async def message(self, message: WSMessage) -> None:
+    async def message(self, ws_message: WSMessage) -> None:
         redis = self.request.app[REDIS]
         connection = self.request.app[CONNECTIONS][self.id]
 
-        match decode(message.data, type=On | Off | Message, strict=False):
-            case On(name=name):
-                connection.streams.add(name)
+        match decode(ws_message.data, type=MessageRequest | SubsribeRequest | UnsubscribeRequest, strict=False):
+            case SubsribeRequest(subscription=subscription):
+                connection.streams.add(subscription.name)
 
-            case Off(name=name):
+            case UnsubscribeRequest(subscription=subscription):
                 with suppress(KeyError):
-                    connection.streams.remove(name)
+                    connection.streams.remove(subscription.name)
 
-            case Message(text=text, chat=chat, id=id):
-                for member in await find_chat_members(redis, chat):
-                    await add_message(redis, member, {'type': 'message', 'id': id, 'text': text, 'sender': self.id, 'chat': chat})
+            case MessageRequest(message=message):
+                if message.receiver == BROADCAST_RECEIVER:
+                    for member in await fetch_chat_members(redis, message.chat):
+                        await add_message(redis, member, to_builtins(replace(message, receiver=member)))
+
+                    return
+
+                await add_message(redis, message.receiver, to_builtins(message))
 
     @logger.catch(message='Onchange webscoket connections')
-    async def _emit(self, event: str | None = None) -> None:
+    def _emit(self, event: str | None = None) -> None:
         redis = self.request.app[REDIS]
         connections = self.request.app[CONNECTIONS]
 
         for id in connections:
             with suppress(RedisError):
-                await add_message(redis, id, {'type': 'online', 'event': event})
+                ensure_future(add_message(redis, id, {'type': 'event', 'name': event}))
 
 
 class OnlineUserView(View, AiohttpRequestMixin):

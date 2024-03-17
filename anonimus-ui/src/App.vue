@@ -40,17 +40,17 @@ export default {
       }
     })
 
-    const onOnlineUsersChange = () => {
+    const onOnlineUsersChange = (event) => {
       store.fetchOnlineUsers()
     }
 
-    const onMessageIncome = (message) => {
+    const onMessageIncome = ({message}) => {
       database.messages.put(message)
     }
 
     onMounted(() => {
-      websocket.on('message', onMessageIncome, false)
-      websocket.on('online', onOnlineUsersChange, false)
+      websocket.on('message:response', onMessageIncome, false)
+      websocket.on('event:response', onOnlineUsersChange, false)
     })
 
     onUnmounted(() => {

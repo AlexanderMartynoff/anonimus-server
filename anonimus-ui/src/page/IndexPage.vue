@@ -16,7 +16,8 @@
 
 
 <script>
-import { computed } from 'vue'
+import { v5 as uuidv5 } from 'uuid'
+import { computed, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from '../stores/store.js'
 import OnlineUserList from '../components/user/OnlineUserList.vue'
@@ -31,8 +32,14 @@ export default {
   },
 
   setup() {
+    const database = inject('database')
+
     const router = useRouter()
     const store = useStore()
+
+    function generateSortedId(...strings) {
+      return uuidv5(strings.sort().join(','), uuidv5.URL)
+    }
 
     return {
       onChatClick() {
@@ -42,10 +49,18 @@ export default {
       },
 
       onUserSelect(user) {
+        const chat = generateSortedId(user.name, store.user.name)
+
+        database.chats.put({
+          'id': chat,
+          'name': user.name,
+          'receiver': user.name,
+        })
+
         router.push({
           name: 'messanger',
           params: {
-            chat: [user.name, store.user.name].sort().join('/'),
+            chat,
           },
         })
       },

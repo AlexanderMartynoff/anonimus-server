@@ -35,14 +35,14 @@ class WebSocketQueue {
       this.dispatch('close')
     }
 
-    this.socket.onmessage = (message) => {
-      const record = JSON.parse(message.data)
+    this.socket.onmessage = (wsMessage) => {
+      const data = JSON.parse(wsMessage.data)
 
-      if (record.type) {
-        this.dispatch(record.type, record)
+      if (data.type) {
+        this.dispatch(data.type, data)
       }
 
-      this.dispatch('any', record)
+      this.dispatch('any', data)
     }
   }
 
@@ -97,11 +97,8 @@ class WebSocketQueue {
     }
   }
 
-  push(message, type = 'message', flush = true) {
-    this.queue.push(JSON.stringify({
-      type,
-      ...message,
-    }))
+  push(message, flush = true) {
+    this.queue.push(JSON.stringify(message))
 
     if (flush && this.socket.readyState == WebSocket.OPEN) {
       this.flush()

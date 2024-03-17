@@ -1,7 +1,7 @@
 from typing import Any
 from aiohttp import web
 from fakeredis.aioredis import FakeRedis
-from anonimus.server.service import REDIS
+from anonimus.server.worker import REDIS
 from anonimus.server.setup import setup_connections, setup_aiojobs_scheduler, setup_routes
 
 
