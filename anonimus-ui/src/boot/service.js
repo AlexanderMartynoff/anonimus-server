@@ -5,13 +5,13 @@ import { WebSocketQueue } from '../api/websocket.js'
 
 export default async ({ app, router, store }) => {
   // WebSocket
-  let ref = LocalStorage.getItem('ref')
+  let reference = LocalStorage.getItem('ref')
 
-  if (!ref) {
-    ref = '0-0'
+  if (!reference) {
+    reference = '0-0'
   }
 
-  const websocket = new WebSocketQueue(`ws://${location.host}/api/messanger/connect?ref=${ref}`)
+  const websocket = new WebSocketQueue(`ws://${location.host}/api/messanger/connect?ref=${reference}`)
 
   websocket.on('any', ({reference}) => {
     if (reference) {

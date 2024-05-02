@@ -30,8 +30,8 @@
       </q-card-section>
 
       <q-card-actions align="right">
+        <q-btn flat label="Yes" color="primary" v-close-popup class="text-white" @click.stop="onDeleteOkClick()"/>
         <q-btn flat label="No" color="primary" v-close-popup class="text-white"/>
-        <q-btn flat label="Yes" color="primary" v-close-popup class="text-white"/>
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -42,7 +42,7 @@ import { computed, ref } from 'vue'
 
 export default {
   name: 'MessangerChatList',
-  emits: ['select', 'scroll-top'],
+  emits: ['select', 'delete'],
   props: {
     chats: {
       type: Object,
@@ -55,6 +55,7 @@ export default {
   setup(props, ctx) {
     const tab = ref('people')
     const confirm = ref(false)
+    const deletedChat = ref(null)
 
     return {
       confirm,
@@ -64,7 +65,12 @@ export default {
         ctx.emit('select', chat)
       },
 
-      onDeleteClick() {
+      onDeleteOkClick() {
+        ctx.emit('delete', deletedChat.value)
+      },
+
+      onDeleteClick(chat) {
+        deletedChat.value = chat
         confirm.value = true
       },
     }

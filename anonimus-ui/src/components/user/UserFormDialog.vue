@@ -1,9 +1,10 @@
 <template>
   <q-dialog ref="dialogRef">
-    <q-card class="bg-primary text-white">
+    <q-card class="bg-primary text-white configuration__card">
 
       <q-card-section class="q-pt-none q-pa-md">
         <q-form class="q-gutter-md">
+          <q-input filled readonly label="Id" v-model="user.id"/>
           <q-input filled label="Name" v-model="user.name"/>
           <q-input filled label="Age" v-model="user.age"/>
           <q-input filled label="Sex" v-model="user.sex"/>
@@ -24,6 +25,7 @@
 </template>
 
 <script>
+import { v4 } from 'uuid'
 import { watch, reactive } from 'vue'
 import { useDialogPluginComponent } from 'quasar'
 
@@ -46,6 +48,10 @@ export default {
 
     watch(props.user, (value) => {
       Object.assign(user, value)
+
+      if (!user.id) {
+        user.id = v4()
+      }
     }, {immediate: true})
 
     return {
@@ -57,3 +63,10 @@ export default {
   },
 }
 </script>
+
+
+<style lang="scss">
+.configuration__card {
+  width: 100%;
+}
+</style>

@@ -1,4 +1,7 @@
-from typing import Iterable
+from typing import Iterable, Any
+from uuid import uuid4, UUID
+import json
+from functools import cached_property
 from aiohttp.web import View, Request, WebSocketResponse
 from aiohttp.http_websocket import WSMessage
 
@@ -49,11 +52,3 @@ class WebsocketView(View):
     @property
     def websocket(self) -> WebSocketResponse:
         return self._websocket
-
-
-class AiohttpRequestMixin:
-    request: Request
-
-    @property
-    def id(self) -> str:
-        return self.request.cookies['id']

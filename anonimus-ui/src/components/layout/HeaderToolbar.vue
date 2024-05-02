@@ -27,7 +27,7 @@ export default {
             user: store.user,
           },
         }).onOk(user => {
-          store.saveUser(toRaw(user))
+          store.saveUser(toRaw(user), {insecure: true})
         })
       },
     }

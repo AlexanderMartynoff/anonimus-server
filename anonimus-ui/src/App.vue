@@ -15,30 +15,16 @@ export default {
     const websocket = inject('websocket')
     const database = inject('database')
 
-    const quasar = useQuasar()
     const store = useStore()
 
     watch(store.user, (user) => {
-      const name = quasar.cookies.get('id')
-
-      if (name && name == user.name) {
-        if (!websocket.active) {
+      console.log('user', user)
+      websocket.stop(() => {
+        if (user.id) {
           websocket.start()
         }
-        return
-      }
-
-      quasar.cookies.set('id', user.name, {sameSite: 'Lax'})
-
-      if (websocket.active) {
-        websocket.on('close', () => {
-          websocket.start()
-        })
-        websocket.stop()
-      } else {
-        websocket.start()
-      }
-    })
+      })
+    }, {immediate: true})
 
     const onOnlineUsersChange = (event) => {
       store.fetchOnlineUsers()

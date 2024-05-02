@@ -8,7 +8,7 @@
     </q-header>
 
     <q-drawer bordered side="left" :breakpoint="690" v-model="leftBar">
-      <messanger-chat-list @select="onChatSelect" :chats="chats" :active-chat-name="chat.id"/>
+      <messanger-chat-list @select="onChatSelect" @delete="onChatDelete" :chats="chats" :active-chat-name="chat.id"/>
     </q-drawer>
 
     <q-page-container>
@@ -127,6 +127,11 @@ export default {
           name: 'messanger',
           params: {chat: id},
         })
+      },
+
+      async onChatDelete(chat) {
+        await database.messages.where('chat').equals(chat.id).delete()
+        await database.chats.where('id').equals(chat.id).delete()
       },
 
       onBtnMenuClick() {

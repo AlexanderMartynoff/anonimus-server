@@ -39,9 +39,6 @@ export default {
         {
           id: v4(),
           text: text.value,
-          // chat: props.chat,
-          // sender: props.user.name,
-          // receiver: props.chat,
         }
       )
 

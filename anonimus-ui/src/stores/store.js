@@ -1,11 +1,10 @@
 import { ref, reactive, inject } from 'vue'
 import { defineStore } from 'pinia'
+import { Cookies } from 'quasar'
 import { fetchAs } from '../api/fetch.js'
 
 
 const useStore = defineStore('user', () => {
-  const database = inject('database')
-
   // online users
   const onlineUsers = ref([])
 
@@ -14,24 +13,15 @@ const useStore = defineStore('user', () => {
   }
 
   // user
-  const user = reactive({
-    id: 0,
-    name: null,
-  })
-
-  async function fetchUser() {
-    await database.users.toCollection().first().then((values) => {
-      Object.assign(user, values, {ready: true})
-    })
-  }
+  const user = reactive({})
 
   async function saveUser(values, options={}) {
-    await database.users.put(values).then(() => {
-      Object.assign(user, values)
-    })
-  }
+    Object.assign(user, values)
 
-  fetchUser()
+    if (options.insecure) {
+      Cookies.set('user', values, {expires: 31, sameSite: 'Strict'})
+    }
+  }
 
   return {
     // user
@@ -42,6 +32,12 @@ const useStore = defineStore('user', () => {
     onlineUsers,
     fetchOnlineUsers,
   }
+}, {
+  persist: [
+    {
+      paths: ['user'],
+    },
+  ],
 })
 
 export {

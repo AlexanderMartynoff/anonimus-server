@@ -1,3 +1,4 @@
+from uuid import UUID
 from time import time
 from msgspec import Struct, field
 
@@ -53,10 +54,16 @@ class UnsubscribeRequest(WebSocketMessage, tag='off:request'):
     subscription: Subscription
 
 
+class User(Struct):
+    id: str
+    name: str
+    anonimus: bool = False
+
+
 class Connection[T]:
-    def __init__(self, id: str, socket: T, name: str | None, context: dict[str, str | None]) -> None:
+    def __init__(self, id: UUID, socket: T, user: User, context: dict[str, str | None]) -> None:
         self.id = id
         self.socket = socket
-        self.name = name
+        self.user = user
         self.context = context
         self.streams: set[str] = set()

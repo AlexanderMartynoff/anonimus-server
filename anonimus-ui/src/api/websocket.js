@@ -10,11 +10,10 @@ class WebSocketQueue {
     this.active = false
 
     this.listeners = []
-    this.queue = []
-    this.waiters = []
+    this.elements = []
   }
 
-  connect({ onOpen = () => {}, onClose = () => {} }) {
+  connect({ onOpen = () => {}, onClose = () => {}, onGreeting = () => {} }) {
     if (this.socket && this.socket.readyState != WebSocket.CLOSED) {
       throw new WebSocketOpenError()
     }
@@ -83,22 +82,36 @@ class WebSocketQueue {
     }, this.timeout)
   }
 
-  stop() {
-    this.active = false
+  stop(onStop = () => {}) {
+    if (this.active) {
+      this.active = false
 
-    if (this.socket) {
+      this.on('close', () => {
+        onStop()
+      })
       this.socket.close()
+    } else {
+      onStop()
     }
   }
 
   flush() {
-    while (this.queue.length) {
-      this.socket.send(this.queue.pop())
+    for (const element of this.elements.slice()) {
+      this.socket.send(element.message)
+
+      const index = this.elements.indexOf(element)
+
+      if (index > -1) {
+        this.elements.splice(index, 1)
+      }
     }
   }
 
-  push(message, flush = true) {
-    this.queue.push(JSON.stringify(message))
+  push(message, flush = true, priority=0) {
+    this.elements.push({
+      message: JSON.stringify(message),
+      priority,
+    })
 
     if (flush && this.socket.readyState == WebSocket.OPEN) {
       this.flush()

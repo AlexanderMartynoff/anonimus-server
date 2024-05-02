@@ -1,16 +1,17 @@
-from redis.asyncio import Redis
-from redis.typing import KeyT, StreamIdT
+from uuid import uuid4, UUID
 from aiohttp.web_ws import WebSocketResponse
 from aiohttp.web import AppKey
 from msgspec import convert, to_builtins
+from aiokafka import AIOKafkaConsumer
 from loguru import logger
 from anonimus.server import struct
-from anonimus.server.toolling.misc import repeat
+from anonimus.server.addon.repeator import repeat
 from anonimus.server.struct import MessageResponse, EventReponse
 
 
-REDIS = AppKey('redis', Redis)
-CONNECTIONS = AppKey('connections', dict[str, struct.Connection[WebSocketResponse]])
+
+KAFKA_CONSUMER = AppKey('redis', AIOKafkaConsumer)
+CONNECTIONS = AppKey('connections', dict[UUID, struct.Connection[WebSocketResponse]])
 
 
 @repeat(Exception, timeout=0, exception_timeout=2)
@@ -20,14 +21,14 @@ async def read_redis(redis: Redis, connections: dict[str, struct.Connection[WebS
         return
 
     streams: dict[KeyT, StreamIdT] = {
-        k: v.context.get('ref') or '0-0' for k, v in connections.items()
+        v.user.id: v.context.get('ref') or '0-0' for v in connections.values()
     }
 
     for _stream, records in await redis.xread(streams=streams):
         stream = _stream.decode()
 
         try:
-            connection = connections[stream]
+            connection = connections['']
         except KeyError:
             continue
 
@@ -53,6 +54,6 @@ async def read_redis(redis: Redis, connections: dict[str, struct.Connection[WebS
 
 
 @repeat(Exception, timeout=3, exception_timeout=2)
-@logger.catch(message='Cleaning from "Redis" error', reraise=True)
-async def clear_redis(redis: Redis):
+@logger.catch(message='Cleaning from "Kafka" error', reraise=True)
+async def clear_redis():
     pass
