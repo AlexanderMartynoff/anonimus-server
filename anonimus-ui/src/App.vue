@@ -18,7 +18,6 @@ export default {
     const store = useStore()
 
     watch(store.user, (user) => {
-      console.log('user', user)
       websocket.stop(() => {
         if (user.id) {
           websocket.start()

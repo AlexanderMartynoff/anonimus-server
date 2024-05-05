@@ -13,7 +13,7 @@ class WebSocketQueue {
     this.elements = []
   }
 
-  connect({ onOpen = () => {}, onClose = () => {}, onGreeting = () => {} }) {
+  connect({ onOpen = () => {}, onClose = () => {} }) {
     if (this.socket && this.socket.readyState != WebSocket.CLOSED) {
       throw new WebSocketOpenError()
     }

@@ -3,10 +3,10 @@ import { liveQuery } from 'dexie'
 
 
 function useLiveQuery(querier, {value=[], depends=[]}={}) {
-  let subscriber
-
   const query = liveQuery(querier)
   const output = ref(value)
+
+  let subscriber
 
   function setup() {
     subscriber = query.subscribe(value => {

@@ -1,15 +1,15 @@
 {
     "configurations": [
         {
-            "name": "Anonimus",
-            "type": "python",
+            "name": "Launch Package",
+            "type": "go",
             "request": "launch",
-            "program": "/Users/alexander/Library/Caches/pypoetry/virtualenvs/anonimus-server-xaNk-DMm-py3.12/bin/anoniumus",
-            "args": [],
-            "justMyCode": false,
-            "pythonArgs": [
-                "-Xfrozen_modules=off"
-            ]
-        },
+            "mode": "auto",
+            "program": "/Users/alexander/Projects/anonimus/anonimus-server/main.go",
+            "env": {
+                "ANONIMUS_ASSETS_PATH": "/Users/alexander/Projects/anonimus/anonimus-server/assets",
+                "ANONIMUS_SESSION_COOKIE_NAME": "session",
+            }
+        }
     ]
 }

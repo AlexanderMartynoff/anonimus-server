@@ -61,7 +61,7 @@ export default {
     const limit = ref(10)
 
     const chats = useLiveQuery(() => database.chats.toArray())
-    const chat = computed(() => chats.value.filter(chat => chat.id == props.chat).pop(0) || {})
+    const chat = computed(() => chats.value.filter(chat => chat.id == props.chat).pop(0) || {id: 'nil'})
 
     const messages = useLiveQuery(() => {
       return database.messages
@@ -100,8 +100,8 @@ export default {
 
       await database.messages.add(message).then(() => {
         websocket.push({
-          type: 'message:request',
-          message: message
+          type: 'message',
+          message,
         })
       })
     }
