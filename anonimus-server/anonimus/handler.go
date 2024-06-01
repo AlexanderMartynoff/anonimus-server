@@ -18,19 +18,19 @@ var Upgrader = websocket.Upgrader{
 }
 
 type MessageHandler struct {
-	SessionService    *SessionService
-	OnlineUserService *OnlineUserService
-	Settings          *Settings
+	Settings      *Settings
+	SessionSrv    *SessionService
+	MessageSrv    MessageService
 }
 
 func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
-	user, err := hr.SessionService.GetUser(r)
+	user, err := hr.SessionSrv.GetUser(r)
 
 	if err != nil {
 		return
 	}
 
-	wsConn, err := Upgrader.Upgrade(w, r, map[string][]string{
+	wc, err := Upgrader.Upgrade(w, r, map[string][]string{
 		"X-Anonimus-Server-Version": {hr.Settings.Version},
 	})
 
@@ -38,10 +38,17 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Websocket connection opening error: %s\n", err.Error())
 	}
 
-	hr.OnlineUserService.Add(user.Id, OnlineUser{User: user})
+	err = hr.MessageSrv.RegisterOnliner(user, wc)
+
+	if err != nil {
+		log.Printf("Can not register connection: %s\n", err.Error())
+		return
+	}
+
+	defer hr.MessageSrv.UnregisterOnliner(user)
 
 	for {
-		msgType, msgData, err := wsConn.ReadMessage()
+		msgType, msgData, err := wc.ReadMessage()
 
 		if err != nil {
 			log.Printf("Websocket reading error: %s\n", err.Error())
@@ -51,10 +58,10 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		switch msgType {
 
 		case websocket.PingMessage:
-			wsConn.WriteMessage(websocket.PongMessage, []byte{})
+			wc.WriteMessage(websocket.PongMessage, []byte("Pong"))
 
 		case websocket.PongMessage:
-			wsConn.WriteMessage(websocket.PingMessage, []byte{})
+			wc.WriteMessage(websocket.PingMessage, []byte("Ping"))
 
 		case websocket.TextMessage:
 			msg := Request{}
@@ -64,25 +71,24 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				fmt.Printf("Message parsing error: '%s'", err.Error())
 			}
-
 			hr.serveMessage(msg.Type, msg.Message)
+
+		default:
 		}
 	}
 
-	err = wsConn.Close()
+	err = wc.Close()
 
 	if err != nil {
 		log.Printf("Websocket closing error: %s\n", err.Error())
 	}
-
-	hr.OnlineUserService.Delete(user.Id)
 }
 
 func (hr *MessageHandler) serveMessage(msgType string, msgData []byte) {
 	switch msgType {
 
 	case "message":
-		msg := Message{}
+		var msg Message
 
 		err := json.Unmarshal(msgData, &msg)
 
@@ -90,23 +96,30 @@ func (hr *MessageHandler) serveMessage(msgType string, msgData []byte) {
 			return
 		}
 
-		fmt.Printf("Message: %s\r\n", msg.Text)
+		hr.MessageSrv.SendMessage(msg)
 
-	case "subscribtion":
+	case "onEvent":
 		return
 
-	case "unsubscribtion":
+	case "offEvent":
 		return
 	}
 }
 
 type OnlineUserHandler struct {
-	OnlineUserService *OnlineUserService
-	SessionService    *SessionService
+	MessageSrv         MessageService
+	SessionSrv    *SessionService
 	Settings          *Settings
 }
 
 func (hr *OnlineUserHandler) List(w http.ResponseWriter, r *http.Request) {
+	v, err := json.Marshal(hr.MessageSrv.ListUsers())
+
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	w.Write(v)
 }
 
 type ContactHandler struct {

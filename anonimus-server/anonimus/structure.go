@@ -2,14 +2,14 @@ package anonimus
 
 import "encoding/json"
 
-
 type User struct {
-	Id string
-	Name string
+	Id   string `json:"id"`
+	Name string `json:"name"`
+	Device string `json:"device"`
 }
 
 type Record struct {
-	Id string
+	Id   string
 	Time float32
 }
 
@@ -29,11 +29,11 @@ type Message struct {
 }
 
 type Request struct {
-	Type string
+	Type    string
 	Message json.RawMessage
 }
 
 type Response struct {
-	Type string
+	Type    string
 	Message json.RawMessage
 }
