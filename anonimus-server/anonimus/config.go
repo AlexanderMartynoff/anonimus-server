@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-type Settings struct {
+type Config struct {
 	Name string
 	Version string
 	Addr string
@@ -16,8 +16,8 @@ type Settings struct {
 	}
 }
 
-func ReadSettings(name string, dirPaths ...string) (*Settings, string, error) {
-	settings := &Settings{}
+func ReadConfig(name string, dirPaths ...string) (Config, string, error) {
+	config := Config{}
 
 	for _, dirPath := range dirPaths {
 		path := strings.Join([]string{dirPath, name}, "/")
@@ -27,12 +27,12 @@ func ReadSettings(name string, dirPaths ...string) (*Settings, string, error) {
 			continue
 		}
 
-		err = json.Unmarshal(file, settings)
+		err = json.Unmarshal(file, &config)
 
 		if err == nil {
-			return settings, path, err
+			return config, path, err
 		}
 	}
 
-	return settings, "nil", errors.New("can not read file")
+	return config, "nil", errors.New("can not read file")
 }

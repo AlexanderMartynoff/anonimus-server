@@ -19,7 +19,7 @@ const useStore = defineStore('user', () => {
     Object.assign(user, values)
 
     if (options.insecure) {
-      Cookies.set('user', values, {expires: 31, sameSite: 'Strict'})
+      Cookies.set('user', values, {expires: 31, sameSite: 'Lax', secure: false, path: '/'})
     }
   }
 

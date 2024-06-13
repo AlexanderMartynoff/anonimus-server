@@ -54,7 +54,7 @@ export default {
         database.chats.put({
           'id': chat,
           'name': user.name,
-          'receiver': user.name,
+          'subjects': [user.device],
         })
 
         router.push({

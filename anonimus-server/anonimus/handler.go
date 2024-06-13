@@ -1,6 +1,7 @@
 package anonimus
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -17,103 +18,210 @@ var Upgrader = websocket.Upgrader{
 	},
 }
 
+type Connection struct {
+	Id     string `json:"id"`
+	Name   string `json:"name"`
+	Device string `json:"device"`
+
+	WsCnc    *websocket.Conn  `json:"-"`
+	Consumer *consumerService `json:"-"`
+}
+
 type MessageHandler struct {
-	Settings      *Settings
-	SessionSrv    *SessionService
-	MessageSrv    MessageService
+	Config          Config
+	Session         SessionService
+	ConsumerFactory ConsumerFactoryService
+	Publisher       PublisherService
+	Connections     Registry[string, Connection]
 }
 
 func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
-	user, err := hr.SessionSrv.GetUser(r)
+	user, err := hr.Session.GetUser(r)
 
 	if err != nil {
+		log.Printf("Session parse error: %s\n", err.Error())
 		return
 	}
 
-	wc, err := Upgrader.Upgrade(w, r, map[string][]string{
-		"X-Anonimus-Server-Version": {hr.Settings.Version},
+	if _, ok := hr.Connections.Get(user.Device); ok {
+		log.Printf("User device already connected: %s\n", user.Device)
+		return
+	}
+
+	wsCnc, err := Upgrader.Upgrade(w, r, http.Header{
+		"X-Anonimus-Server-Version": {hr.Config.Version},
 	})
 
 	if err != nil {
-		log.Printf("Websocket connection opening error: %s\n", err.Error())
+		log.Printf("Websocket connection upgrade error: %s\n", err.Error())
 	}
 
-	err = hr.MessageSrv.RegisterOnliner(user, wc)
+	defer func() {
+		err := wsCnc.Close()
+
+		if err != nil {
+			log.Printf("Websocket closing error: %s\n", err.Error())
+		}
+	}()
+
+	ctx := context.Background()
+
+	consumer, err := hr.ConsumerFactory.Get(ctx, user.Id, user.Device)
 
 	if err != nil {
-		log.Printf("Can not register connection: %s\n", err.Error())
+		log.Printf("Register consumer error: %s. Close connection\n", err.Error())
 		return
 	}
 
-	defer hr.MessageSrv.UnregisterOnliner(user)
+	consumer.OnMessage = func(data []byte, ack func() error) {
+		hr.onReceive(ctx, user, data, ack, wsCnc)
+	}
+
+	err = consumer.Start(ctx)
+
+	if err != nil {
+		log.Printf("Start consumer error: %s\n", err.Error())
+		return
+	}
+
+	defer consumer.Stop()
+
+	hr.Connections.Set(user.Device, Connection{
+		Id:       user.Id,
+		Name:     user.Name,
+		Device:   user.Device,
+		WsCnc:    wsCnc,
+		Consumer: &consumer,
+	})
+
+	defer hr.Connections.Delete(user.Device)
+
+	hr.sendForAll("event", Event{
+		Name: "connect",
+	})
+
+	defer hr.sendForAll("event", Event{
+		Name: "disconnect",
+	})
 
 	for {
-		msgType, msgData, err := wc.ReadMessage()
+		msgType, msgData, err := wsCnc.ReadMessage()
 
 		if err != nil {
-			log.Printf("Websocket reading error: %s\n", err.Error())
+			log.Printf("websocket reading error: %s\n", err.Error())
 			break
 		}
 
 		switch msgType {
 
 		case websocket.PingMessage:
-			wc.WriteMessage(websocket.PongMessage, []byte("Pong"))
+			wsCnc.WriteMessage(websocket.PongMessage, []byte("Pong"))
 
 		case websocket.PongMessage:
-			wc.WriteMessage(websocket.PingMessage, []byte("Ping"))
+			wsCnc.WriteMessage(websocket.PingMessage, []byte("Ping"))
 
 		case websocket.TextMessage:
-			msg := Request{}
+			opr := Operation{}
 
-			err := json.Unmarshal(msgData, &msg)
+			err := json.Unmarshal(msgData, &opr)
 
 			if err != nil {
-				fmt.Printf("Message parsing error: '%s'", err.Error())
+				log.Printf("Message parsing error: '%s'", err.Error())
 			}
-			hr.serveMessage(msg.Type, msg.Message)
+
+			hr.onSend(ctx, user, opr.Type, opr.Message)
 
 		default:
+			log.Printf("Unknown message type: '%d'", msgType)
 		}
-	}
-
-	err = wc.Close()
-
-	if err != nil {
-		log.Printf("Websocket closing error: %s\n", err.Error())
 	}
 }
 
-func (hr *MessageHandler) serveMessage(msgType string, msgData []byte) {
+func (hr *MessageHandler) onSend(ctx context.Context, _ User, msgType string, msgData []byte) {
 	switch msgType {
 
 	case "message":
-		var msg Message
+		var msg BroadcastMessage
 
 		err := json.Unmarshal(msgData, &msg)
 
 		if err != nil {
+			log.Printf("Message marshaling error: '%s'", err.Error())
 			return
 		}
 
-		hr.MessageSrv.SendMessage(msg)
+		for _, subject := range msg.Subjects {
+			hr.Publisher.Publish(ctx, subject, []byte(msg.Text))
+		}
 
-	case "onEvent":
+	case "subscription":
 		return
 
-	case "offEvent":
+	case "unsubscription":
 		return
 	}
 }
 
+func (hr *MessageHandler) onReceive(_ context.Context, _ User, msgData []byte, ack func() error, wsCnc *websocket.Conn) {
+	err := hr.send("message", Message{
+		Text: string(msgData),
+	}, wsCnc)
+
+	if err == nil {
+		ack()
+	} else {
+		log.Printf("'OnReceive' sending error: '%s'\n", err.Error())
+	}
+}
+
+func (hr *MessageHandler) send(oprType string, message any, wsCnc *websocket.Conn) error {
+	v, err := json.Marshal(message)
+
+	if err != nil {
+		return err
+	}
+
+	op := Operation{
+		Source:  "server",
+		Type:    oprType,
+		Message: v,
+	}
+
+	v, err = json.Marshal(op)
+
+	if err != nil {
+		return err
+	}
+
+	err = wsCnc.WriteMessage(websocket.TextMessage, v)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (hr *MessageHandler) sendForAll(oprType string, message any) {
+	for _, cnc := range hr.Connections.List() {
+		err := hr.send(oprType, message, cnc.WsCnc)
+
+		if err == nil {
+			log.Printf("Everyone sending to 'Name:%s, Id:%s' \n", cnc.Name, cnc.Id)
+		} else {
+			log.Printf("Everyone sending error: '%s'\n", err.Error())
+		}
+	}
+}
+
 type OnlineUserHandler struct {
-	MessageSrv         MessageService
-	SessionSrv    *SessionService
-	Settings          *Settings
+	Session     SessionService
+	Config      Config
+	Connections Registry[string, Connection]
 }
 
 func (hr *OnlineUserHandler) List(w http.ResponseWriter, r *http.Request) {
-	v, err := json.Marshal(hr.MessageSrv.ListUsers())
+	v, err := json.Marshal(hr.Connections.List())
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -123,7 +231,7 @@ func (hr *OnlineUserHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 type ContactHandler struct {
-	Settings *Settings
+	Config *Config
 }
 
 func (hr *ContactHandler) Delete(w http.ResponseWriter, r *http.Request) {

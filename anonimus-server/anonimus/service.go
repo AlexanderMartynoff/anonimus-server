@@ -3,24 +3,30 @@ package anonimus
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"errors"
 	"net/http"
 	"net/url"
-	"sync"
-	"time"
+	"slices"
 
-	"github.com/gorilla/websocket"
-	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 )
 
+// Interface
+type ConsumerFactoryService interface {
+	Get(ctx context.Context, name string, id string) (consumerService, error)
+}
+
+type PublisherService interface {
+	Publish(ctx context.Context, subject string, payload []byte, opts ...jetstream.PublishOpt) (*jetstream.PubAck, error)
+}
+
 // SessionService
 type SessionService struct {
-	CookieName string
+	cookieName string
 }
 
 func (srv *SessionService) GetUser(r *http.Request) (User, error) {
-	cookie, err := r.Cookie(srv.CookieName)
+	cookie, err := r.Cookie(srv.cookieName)
 
 	if err != nil {
 		return User{}, err
@@ -45,107 +51,186 @@ func (srv *SessionService) GetUser(r *http.Request) (User, error) {
 
 func NewSessionService(cookieName string) SessionService {
 	return SessionService{
-		CookieName: cookieName,
+		cookieName: cookieName,
 	}
 }
 
-type Onliner struct {
-	User *User
-	Wc   *websocket.Conn
+// NATS consumer service
+
+type consumerService struct {
+	id   string
+	name string
+
+	csm    jetstream.Consumer
+	msgItr jetstream.MessagesContext
+
+	OnMessage func(data []byte, ack func() error)
 }
 
-// MessageService
-type MessageService interface {
-	SendMessage(msg Message)
-	RegisterOnliner(user User, wc *websocket.Conn) error
-	UnregisterOnliner(user User)
-	ListUsers() []User
-	Start()
-	Stop()
+func (srv *consumerService) Id() string {
+	return srv.id
 }
 
-type messageService struct {
-	nc *nats.Conn
-	js jetstream.JetStream
-
-	parentCtx context.Context
-	ctx       context.Context
-	cancel    context.CancelFunc
-
-	onls   map[string]Onliner
-	onlsMu sync.Mutex
+func (srv *consumerService) Name() string {
+	return srv.name
 }
 
-func (srv *messageService) SendMessage(msg Message) {
-	srv.js.Publish(srv.ctx, "orders.message", []byte(msg.Text))
+func (srv *consumerService) Stop() {
+	srv.msgItr.Stop()
 }
 
-func (srv *messageService) RegisterOnliner(user User, wc *websocket.Conn) error {
-	srv.onlsMu.Lock()
-	defer srv.onlsMu.Unlock()
+// msgConsumerSrvEndpoint
 
-	_, _ = srv.js.CreateOrUpdateStream(srv.ctx, jetstream.StreamConfig{
-		Name:     "orders",
-		Subjects: []string{"1", "2"},
-	})
-
-	srv.onls[user.Device] = Onliner{
-		User: &user,
-		Wc:   wc,
+func (srv *consumerService) Start(_ context.Context) error {
+	if srv.OnMessage == nil {
+		return errors.New("'OnMessage' is nil")
 	}
+
+	if srv.csm == nil {
+		return errors.New("consumer is nil")
+	}
+
+	if srv.msgItr != nil {
+		return errors.New("message iterator is not nil")
+	}
+
+	msgItr, err := srv.csm.Messages()
+
+	if err != nil {
+		return nil
+	}
+
+	srv.msgItr = msgItr
+
+	go func(msgItr jetstream.MessagesContext) {
+		for {
+			msg, err := msgItr.Next()
+
+			if err != nil {
+				break
+			}
+
+			srv.OnMessage(msg.Data(), msg.Ack)
+		}
+	}(msgItr)
 
 	return nil
 }
 
-func (srv *messageService) UnregisterOnliner(user User) {
-	srv.onlsMu.Lock()
-	defer srv.onlsMu.Unlock()
+type consumerFactoryService struct {
+	js  jetstream.JetStream
+	mtx RegistryMutex[string]
 }
 
-func (srv *messageService) ListUsers() []User {
-	srv.onlsMu.Lock()
-	defer srv.onlsMu.Unlock()
-
-	ln := len(srv.onls)
-	ls := make([]User, ln)
-
-	for _, v := range srv.onls {
-		ln--
-		ls[ln] = *v.User
-	}
-
-	return ls
+func (srv *consumerFactoryService) Configure() error {
+	return errors.ErrUnsupported
 }
 
-func (srv *messageService) Start() {
-	nc, err := nats.Connect(nats.DefaultURL)
+func (srv *consumerFactoryService) Get(ctx context.Context, name string, id string) (consumerService, error) {
+	unlock := srv.mtx.Lock(name)
+	defer unlock()
+
+	csmSrv, err := srv.get(ctx, name, id)
 
 	if err != nil {
-		log.Printf("NATS error: %s\n", err.Error())
+		return consumerService{}, err
 	}
 
-	srv.nc = nc
+	return csmSrv, nil
+}
 
-	js, err := jetstream.New(nc)
+func (srv *consumerFactoryService) get(ctx context.Context, name string, id string) (consumerService, error) {
+	stream, err := srv.createOrUpdateStream(ctx, name, id)
 
 	if err != nil {
-		log.Printf("NATS JS error: %s\n", err.Error())
+		return consumerService{}, err
 	}
 
-	srv.js = js
+	csm, err := srv.createOrUpdateConsumer(ctx, id, stream)
 
-	ctx, cancel := context.WithTimeout(srv.parentCtx, 30*time.Second)
-
-	srv.ctx = ctx
-	srv.cancel = cancel
-}
-
-func (srv *messageService) Stop() {
-	srv.cancel()
-}
-
-func NewMessageService(ctx context.Context) MessageService {
-	return &messageService{
-		parentCtx: ctx,
+	if err != nil {
+		return consumerService{}, err
 	}
+
+	csmSrv := consumerService{
+		id:         id,
+		name:       name,
+		csm:        csm,
+	}
+
+	return csmSrv, nil
+}
+
+func (srv *consumerFactoryService) createOrUpdateStream(ctx context.Context, name string, id string) (jetstream.Stream, error) {
+	if srv.js == nil {
+		return nil, errors.New("jetstream is nil")
+	}
+
+	stream, err := srv.js.Stream(ctx, name)
+
+	if errors.Is(err, jetstream.ErrStreamNotFound) {
+		// create stream
+		stream, err = srv.js.CreateStream(ctx, jetstream.StreamConfig{
+			Name:     name,
+			Subjects: []string{id},
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		// other error
+		return nil, err
+	} else {
+		// if stream already exists - just update it
+		info, err := stream.Info(ctx)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if !slices.Contains(info.Config.Subjects, id) {
+			stream, err = srv.js.UpdateStream(ctx, jetstream.StreamConfig{
+				Name:     name,
+				Subjects: append(info.Config.Subjects, id),
+			})
+
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return stream, nil
+}
+
+func (srv *consumerFactoryService) createOrUpdateConsumer(ctx context.Context, id string, stream jetstream.Stream) (jetstream.Consumer, error) {
+	cns, err := stream.Consumer(ctx, id)
+
+	if errors.Is(err, jetstream.ErrConsumerNotFound) {
+		cns, err = stream.CreateConsumer(ctx, jetstream.ConsumerConfig{
+			Name:          id,
+			AckPolicy:     jetstream.AckExplicitPolicy,
+			FilterSubject: id,
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	}
+
+	return cns, nil
+}
+
+// API
+func NewConsumerFactoryService(js jetstream.JetStream) *consumerFactoryService {
+	return &consumerFactoryService{
+		js:  js,
+		mtx: NewRegistryMutex[string](),
+	}
+}
+
+type natsConnectorService struct {
 }

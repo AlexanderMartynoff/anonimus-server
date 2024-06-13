@@ -34,9 +34,8 @@ export default {
     }
 
     onMounted(() => {
-      websocket.on('message:response', onMessageIncome, false)
-      // websocket.on('event:response', onOnlineUsersChange, false)
-      onOnlineUsersChange()
+      // websocket.on('message', onMessageIncome, false)
+      websocket.on('event', onOnlineUsersChange, false)
     })
 
     onUnmounted(() => {

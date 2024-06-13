@@ -25,7 +25,7 @@
 
 <script>
 import { scroll, useQuasar } from 'quasar'
-import { ref, computed, inject, watch, nextTick } from 'vue'
+import { ref, toRaw, computed, inject, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from '../stores/store.js'
 import { useLiveQuery } from '../api/vue.js'
@@ -89,13 +89,14 @@ export default {
         .limit(1)
         .reverse()
         .sortBy('sequence')
-        .then(messages => messages.pop(0)?.sequence || 0)
+        .then(messages => messages.pop(0)?.sequence || 0) + 1
 
       Object.assign(message, {
-        sequence: sequence + 1,
+        sequence,
         chat: chat.value.id,
-        sender: store.user.name,
+        sender: store.user.device,
         receiver: chat.value.receiver,
+        subjects: toRaw(chat.value.subjects),
       })
 
       await database.messages.add(message).then(() => {
@@ -114,7 +115,7 @@ export default {
       user,
 
       onChatScrollTop(index, onDone) {
-        limit.value += 10
+        // limit.value += 10
         onDone()
       },
 
