@@ -3,7 +3,6 @@
 </template>
 
 <script>
-import { useQuasar } from 'quasar'
 import { onUnmounted, onMounted, inject, watch } from 'vue'
 import { useStore } from './stores/store.js'
 
@@ -34,7 +33,7 @@ export default {
     }
 
     onMounted(() => {
-      // websocket.on('message', onMessageIncome, false)
+      websocket.on('message', onMessageIncome, false)
       websocket.on('event', onOnlineUsersChange, false)
     })
 

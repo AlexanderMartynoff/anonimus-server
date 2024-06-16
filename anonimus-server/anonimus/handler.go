@@ -6,8 +6,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
+	"strconv"
+	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 )
 
 var Upgrader = websocket.Upgrader{
@@ -18,13 +23,14 @@ var Upgrader = websocket.Upgrader{
 	},
 }
 
-type Connection struct {
-	Id     string `json:"id"`
-	Name   string `json:"name"`
-	Device string `json:"device"`
+type OnlineUser struct {
+	Id       string `json:"id"`
+	Name     string `json:"name"`
+	DeviceId string `json:"deviceId"`
 
-	WsCnc    *websocket.Conn  `json:"-"`
-	Consumer *consumerService `json:"-"`
+	wsMtx    *sync.Mutex      `json:"-"`
+	wsCnc    *websocket.Conn  `json:"-"`
+	consumer *consumerService `json:"-"`
 }
 
 type MessageHandler struct {
@@ -32,7 +38,7 @@ type MessageHandler struct {
 	Session         SessionService
 	ConsumerFactory ConsumerFactoryService
 	Publisher       PublisherService
-	Connections     Registry[string, Connection]
+	OnlineUsers     Registry[string, OnlineUser]
 }
 
 func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
@@ -43,8 +49,8 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, ok := hr.Connections.Get(user.Device); ok {
-		log.Printf("User device already connected: %s\n", user.Device)
+	if _, ok := hr.OnlineUsers.Get(user.DeviceId); ok {
+		log.Printf("User device already connected: %s\n", user.DeviceId)
 		return
 	}
 
@@ -66,15 +72,15 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 
-	consumer, err := hr.ConsumerFactory.Get(ctx, user.Id, user.Device)
+	consumer, err := hr.ConsumerFactory.Get(ctx, user.Id, user.DeviceId)
 
 	if err != nil {
 		log.Printf("Register consumer error: %s. Close connection\n", err.Error())
 		return
 	}
 
-	consumer.OnMessage = func(data []byte, ack func() error) {
-		hr.onReceive(ctx, user, data, ack, wsCnc)
+	consumer.OnReceive = func(msg jetstream.Msg) {
+		hr.onReceive(ctx, user, msg, wsCnc)
 	}
 
 	err = consumer.Start(ctx)
@@ -86,21 +92,24 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 
 	defer consumer.Stop()
 
-	hr.Connections.Set(user.Device, Connection{
+	hr.OnlineUsers.Set(user.DeviceId, OnlineUser{
 		Id:       user.Id,
+		DeviceId: user.DeviceId,
 		Name:     user.Name,
-		Device:   user.Device,
-		WsCnc:    wsCnc,
-		Consumer: &consumer,
+
+		// TODO: Refactring?
+		wsMtx:    &sync.Mutex{},
+		wsCnc:    wsCnc,
+		consumer: &consumer,
 	})
 
-	defer hr.Connections.Delete(user.Device)
+	defer hr.OnlineUsers.Delete(user.DeviceId)
 
-	hr.sendForAll("event", Event{
+	hr.distribute("event", Event{
 		Name: "connect",
 	})
 
-	defer hr.sendForAll("event", Event{
+	defer hr.distribute("event", Event{
 		Name: "disconnect",
 	})
 
@@ -121,15 +130,15 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 			wsCnc.WriteMessage(websocket.PingMessage, []byte("Ping"))
 
 		case websocket.TextMessage:
-			opr := Operation{}
+			var op Operation
 
-			err := json.Unmarshal(msgData, &opr)
+			err := json.Unmarshal(msgData, &op)
 
 			if err != nil {
 				log.Printf("Message parsing error: '%s'", err.Error())
 			}
 
-			hr.onSend(ctx, user, opr.Type, opr.Message)
+			hr.onSend(ctx, user, op.Type, op.Message)
 
 		default:
 			log.Printf("Unknown message type: '%d'", msgType)
@@ -137,7 +146,7 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (hr *MessageHandler) onSend(ctx context.Context, _ User, msgType string, msgData []byte) {
+func (hr *MessageHandler) onSend(ctx context.Context, user User, msgType string, msgData []byte) {
 	switch msgType {
 
 	case "message":
@@ -150,8 +159,25 @@ func (hr *MessageHandler) onSend(ctx context.Context, _ User, msgType string, ms
 			return
 		}
 
-		for _, subject := range msg.Subjects {
-			hr.Publisher.Publish(ctx, subject, []byte(msg.Text))
+		if len(msg.ChatSubjects) == 0 {
+			// TODO: Implement fetch subjects in DB
+			return
+		}
+
+		// Send if subjets present in message
+		for _, subject := range msg.ChatSubjects {
+			hr.Publisher.PublishMsg(ctx, &nats.Msg{
+				Header: nats.Header{
+					"Id":               []string{msg.Id},
+					"Chat-Id":          []string{msg.Chat},
+					"Sender-Id":        []string{user.Id},
+					"Sender-Device-Id": []string{user.DeviceId},
+					// Non string fields
+					"Sequence": []string{strconv.Itoa(msg.Sequence)},
+				},
+				Subject: subject,
+				Data:    []byte(msg.Text),
+			})
 		}
 
 	case "subscription":
@@ -162,9 +188,38 @@ func (hr *MessageHandler) onSend(ctx context.Context, _ User, msgType string, ms
 	}
 }
 
-func (hr *MessageHandler) onReceive(_ context.Context, _ User, msgData []byte, ack func() error, wsCnc *websocket.Conn) {
-	err := hr.send("message", Message{
-		Text: string(msgData),
+func (hr *MessageHandler) onReceive(_ context.Context, user User, msg jetstream.Msg, wsCnc *websocket.Conn) {
+	ack := func() {
+		err := msg.Ack()
+
+		if err != nil {
+			log.Printf("'Ack' sending error: '%s'\n", err.Error())
+		}
+	}
+
+	log.Printf("Receive message: '%s:%s'\n", user.Id, user.Name)
+
+	headers := msg.Headers()
+
+	if headers == nil {
+		ack()
+		log.Printf("Ignore message with empty headers\n")
+		return
+	}
+
+	sequence, err := strconv.Atoi(headers.Get("Sequence"))
+
+	if err != nil {
+		ack()
+		log.Printf("Ignore message with incorrect sequence: '%s'\n", err.Error())
+		return
+	}
+
+	err = hr.send("message", Message{
+		Id:       headers.Get("Id"),
+		Chat:     headers.Get("Chat-Id"),
+		Sequence: sequence,
+		Text:     string(msg.Data()),
 	}, wsCnc)
 
 	if err == nil {
@@ -202,14 +257,15 @@ func (hr *MessageHandler) send(oprType string, message any, wsCnc *websocket.Con
 	return nil
 }
 
-func (hr *MessageHandler) sendForAll(oprType string, message any) {
-	for _, cnc := range hr.Connections.List() {
-		err := hr.send(oprType, message, cnc.WsCnc)
+func (hr *MessageHandler) distribute(oprType string, message any) {
+	for _, user := range hr.OnlineUsers.List() {
+		// TODO: Replace lock with chanel?
+		user.wsMtx.Lock()
+		err := hr.send(oprType, message, user.wsCnc)
+		user.wsMtx.Unlock()
 
-		if err == nil {
-			log.Printf("Everyone sending to 'Name:%s, Id:%s' \n", cnc.Name, cnc.Id)
-		} else {
-			log.Printf("Everyone sending error: '%s'\n", err.Error())
+		if err != nil {
+			log.Printf("Notify sending error: '%s'\n", err.Error())
 		}
 	}
 }
@@ -217,11 +273,22 @@ func (hr *MessageHandler) sendForAll(oprType string, message any) {
 type OnlineUserHandler struct {
 	Session     SessionService
 	Config      Config
-	Connections Registry[string, Connection]
+	OnlineUsers Registry[string, OnlineUser]
 }
 
 func (hr *OnlineUserHandler) List(w http.ResponseWriter, r *http.Request) {
-	v, err := json.Marshal(hr.Connections.List())
+	user, err := hr.Session.GetUser(r)
+
+	if err != nil {
+		log.Printf("Session parse error: %s\n", err.Error())
+		return
+	}
+
+	sls := slices.DeleteFunc(hr.OnlineUsers.List(), func(onlUser OnlineUser) bool {
+		return onlUser.Id == user.Id
+	})
+
+	v, err := json.Marshal(sls)
 
 	if err != nil {
 		fmt.Println(err.Error())

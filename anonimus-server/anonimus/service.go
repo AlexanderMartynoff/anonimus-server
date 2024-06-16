@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"slices"
 
+	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 )
 
@@ -18,6 +20,7 @@ type ConsumerFactoryService interface {
 
 type PublisherService interface {
 	Publish(ctx context.Context, subject string, payload []byte, opts ...jetstream.PublishOpt) (*jetstream.PubAck, error)
+	PublishMsg(ctx context.Context, msg *nats.Msg, opts ...jetstream.PublishOpt) (*jetstream.PubAck, error)
 }
 
 // SessionService
@@ -64,7 +67,8 @@ type consumerService struct {
 	csm    jetstream.Consumer
 	msgItr jetstream.MessagesContext
 
-	OnMessage func(data []byte, ack func() error)
+	// OnReceive func(data []byte, ack func() error)
+	OnReceive func(msg jetstream.Msg)
 }
 
 func (srv *consumerService) Id() string {
@@ -82,7 +86,7 @@ func (srv *consumerService) Stop() {
 // msgConsumerSrvEndpoint
 
 func (srv *consumerService) Start(_ context.Context) error {
-	if srv.OnMessage == nil {
+	if srv.OnReceive == nil {
 		return errors.New("'OnMessage' is nil")
 	}
 
@@ -106,11 +110,13 @@ func (srv *consumerService) Start(_ context.Context) error {
 		for {
 			msg, err := msgItr.Next()
 
+			log.Printf("Get message from iterator\n")
+
 			if err != nil {
 				break
 			}
 
-			srv.OnMessage(msg.Data(), msg.Ack)
+			srv.OnReceive(msg)
 		}
 	}(msgItr)
 
@@ -175,6 +181,8 @@ func (srv *consumerFactoryService) createOrUpdateStream(ctx context.Context, nam
 			Subjects: []string{id},
 		})
 
+		log.Printf("Create stream '%s'", name)
+
 		if err != nil {
 			return nil, err
 		}
@@ -195,11 +203,15 @@ func (srv *consumerFactoryService) createOrUpdateStream(ctx context.Context, nam
 				Subjects: append(info.Config.Subjects, id),
 			})
 
+			log.Printf("Update stream '%s'", name)
+
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
+
+	log.Printf("Select stream '%s'\n", name)
 
 	return stream, nil
 }
@@ -210,7 +222,7 @@ func (srv *consumerFactoryService) createOrUpdateConsumer(ctx context.Context, i
 	if errors.Is(err, jetstream.ErrConsumerNotFound) {
 		cns, err = stream.CreateConsumer(ctx, jetstream.ConsumerConfig{
 			Name:          id,
-			AckPolicy:     jetstream.AckExplicitPolicy,
+			AckPolicy:     jetstream.AckAllPolicy,
 			FilterSubject: id,
 		})
 
@@ -232,5 +244,4 @@ func NewConsumerFactoryService(js jetstream.JetStream) *consumerFactoryService {
 	}
 }
 
-type natsConnectorService struct {
-}
+type natsConnectorService struct {}

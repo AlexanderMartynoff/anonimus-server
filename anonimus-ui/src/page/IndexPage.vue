@@ -48,19 +48,21 @@ export default {
         })
       },
 
-      onUserSelect(user) {
-        const chat = generateSortedId(user.name, store.user.name)
+      onUserSelect(onlineUser) {
+        const chatId = generateSortedId(onlineUser.name, store.user.name)
 
         database.chats.put({
-          'id': chat,
-          'name': user.name,
-          'subjects': [user.device],
+          'id': chatId,
+          'name': onlineUser.name,
+          'users': [
+            {id: onlineUser.id, deviceId: onlineUser.deviceId},
+          ],
         })
 
         router.push({
           name: 'messanger',
           params: {
-            chat,
+            chat: chatId,
           },
         })
       },

@@ -45,19 +45,19 @@ func main() {
 	// 1. HTTP Handlers
 	consumerSrv := anonimus.NewConsumerFactoryService(natsJs)
 	sessionSrv := anonimus.NewSessionService("user")
-	cncRegistry := anonimus.NewRegistry[string, anonimus.Connection]()
+	ouRegistry := anonimus.NewRegistry[string, anonimus.OnlineUser]()
 
 	messageHandler := anonimus.MessageHandler{
 		Config:          config,
 		ConsumerFactory: consumerSrv,
 		Session:         sessionSrv,
-		Connections:     cncRegistry,
+		OnlineUsers:     ouRegistry,
 		Publisher:       natsJs,
 	}
 	onlineUserHandler := anonimus.OnlineUserHandler{
 		Config:      config,
 		Session:     sessionSrv,
-		Connections: cncRegistry,
+		OnlineUsers: ouRegistry,
 	}
 
 	router := http.NewServeMux()

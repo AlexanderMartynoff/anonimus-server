@@ -4,8 +4,8 @@
 
       <q-card-section class="q-pt-none q-pa-md">
         <q-form class="q-gutter-md">
-          <q-input filled readonly label="Id" v-model="user.id"/>
-          <q-input filled readonly label="Device" v-model="user.device"/>
+          <q-input filled label="Id" v-model="user.id"/>
+          <q-input filled readonly label="Device" v-model="user.deviceId"/>
           <q-input filled label="Name" v-model="user.name"/>
           <q-input filled label="Age" v-model="user.age"/>
           <q-input filled label="Sex" v-model="user.sex"/>
@@ -54,8 +54,8 @@ export default {
         user.id = v4()
       }
 
-      if (!user.device) {
-        user.device = v4()
+      if (!user.deviceId) {
+        user.deviceId = v4()
       }
     }, {immediate: true})
 

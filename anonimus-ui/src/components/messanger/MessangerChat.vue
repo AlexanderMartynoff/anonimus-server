@@ -1,7 +1,7 @@
 <template>
   <div class="q-pa-md messanger__writer messanger__writer--responsive">
     <q-infinite-scroll @load="onScrollTop" reverse>
-      <q-chat-message :name="message.sender" avatar="/static/user.png" stamp="7 minutes ago" :sent="message.sender == user.name" text-color="white" bg-color="primary" v-for="message in messages">
+      <q-chat-message :name="message.senderName" avatar="/static/user.png" stamp="7 minutes ago" :sent="message.senderDeviceId == user.deviceId" text-color="white" bg-color="primary" v-for="message in messages">
         <div class="messanger__message">
           {{message.text}}
         </div>

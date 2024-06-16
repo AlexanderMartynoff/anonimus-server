@@ -1,7 +1,7 @@
 <template>
   <div class="q-pa-md">
     <q-list bordered class="rounded-borders">
-      <q-item-label header>Chats</q-item-label>
+      <q-item-label header>Users</q-item-label>
 
       <q-item clickable v-ripple v-for="onlineUser in onlineUsers" @click="onSelect(onlineUser)">
         <q-item-section avatar>
@@ -12,9 +12,7 @@
 
         <q-item-section>
           <q-item-label>{{onlineUser.name}}</q-item-label>
-        </q-item-section>
-        <q-item-section side>
-          1 min ago
+          <q-item-label caption>{{onlineUser.deviceId}}</q-item-label>
         </q-item-section>
       </q-item>
 

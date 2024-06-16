@@ -127,7 +127,8 @@ class WebSocketQueue {
   }
 
   off(executer) {
-    const index = this.listeners.indexOf(executer)
+    // TODO: Think about it API!
+    const index = this.listeners.map(it => it.execute).indexOf(executer)
 
     if (index > -1) {
       this.listeners.splice(index, 1)
@@ -140,7 +141,7 @@ class WebSocketQueue {
         listener.execute(event)
 
         if (listener.once) {
-          this.off(listener)
+          this.off(listener.execute)
         }
       }
     }

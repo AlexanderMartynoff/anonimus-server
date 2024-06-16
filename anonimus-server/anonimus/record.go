@@ -5,7 +5,7 @@ import "encoding/json"
 type User struct {
 	Id     string `json:"id"`
 	Name   string `json:"name"`
-	Device string `json:"device"`
+	DeviceId string `json:"deviceId"`
 }
 
 type Subscribtion struct {
@@ -29,11 +29,10 @@ type Message struct {
 
 type BroadcastMessage struct {
 	Message
-	Subjects []string `json:"subjects"`
+	ChatSubjects []string `json:"chatSubjects"`
 }
 
 type Operation struct {
-	Id      string          `json:"id"`
 	Source  string          `json:"source"`
 	Time    float32         `json:"time"`
 	Type    string          `json:"type"`

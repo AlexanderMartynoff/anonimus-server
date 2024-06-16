@@ -58,7 +58,7 @@ export default {
     const store = useStore()
 
     const leftBar = ref(quasar.platform.is.desktop)
-    const limit = ref(10)
+    const limit = ref(50)
 
     const chats = useLiveQuery(() => database.chats.toArray())
     const chat = computed(() => chats.value.filter(chat => chat.id == props.chat).pop(0) || {id: 'nil'})
@@ -94,9 +94,10 @@ export default {
       Object.assign(message, {
         sequence,
         chat: chat.value.id,
-        sender: store.user.device,
-        receiver: chat.value.receiver,
-        subjects: toRaw(chat.value.subjects),
+        chatSubjects: chat.value.users.map(user => user.deviceId),
+        senderDeviceId: store.user.deviceId,
+        senderId: store.user.id,
+        senderName: store.user.name,
       })
 
       await database.messages.add(message).then(() => {
