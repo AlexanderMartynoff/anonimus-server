@@ -1,3 +1,0 @@
-function fetchLastMessage(chat) {
-
-}

@@ -3,8 +3,8 @@ package anonimus
 import "encoding/json"
 
 type User struct {
-	Id     string `json:"id"`
-	Name   string `json:"name"`
+	Id       string `json:"id"`
+	Name     string `json:"name"`
 	DeviceId string `json:"deviceId"`
 }
 
@@ -21,10 +21,13 @@ type Event struct {
 }
 
 type Message struct {
-	Id       string `json:"id"`
-	Sequence int    `json:"sequence"`
-	Chat     string `json:"chat"`
-	Text     string `json:"text"`
+	Id             string `json:"id"`
+	Sequence       int    `json:"sequence"`
+	Chat           string `json:"chat"`
+	Text           string `json:"text"`
+	SenderName     string `json:"senderName"`
+	SenderId       string `json:"senderId"`
+	SenderDeviceId string `json:"senderDeviceId"`
 }
 
 type BroadcastMessage struct {
@@ -32,7 +35,7 @@ type BroadcastMessage struct {
 	ChatSubjects []string `json:"chatSubjects"`
 }
 
-type Operation struct {
+type Command struct {
 	Source  string          `json:"source"`
 	Time    float32         `json:"time"`
 	Type    string          `json:"type"`

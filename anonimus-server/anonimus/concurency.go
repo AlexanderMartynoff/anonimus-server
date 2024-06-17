@@ -46,19 +46,17 @@ func (rgr *Registry[K, V]) Set(k K, v V) {
 	rgr.kv[k] = v
 }
 
-func (rgr *Registry[K, V]) GetOrSet(k K, dv V) (bool, V) {
+func (rgr *Registry[K, V]) GetOrSet(k K, v V) (bool, V) {
 	rgr.mx.Lock()
 	defer rgr.mx.Unlock()
 
-	v, ok := rgr.kv[k]
-
-	if ok {
+	if v, ok := rgr.kv[k]; ok {
 		return ok, v
 	}
 
-	rgr.kv[k] = dv
+	rgr.kv[k] = v
 
-	return ok, dv
+	return false, v
 }
 
 func (rgr *Registry[K, V]) Delete(k K) {

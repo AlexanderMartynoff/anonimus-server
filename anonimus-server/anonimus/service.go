@@ -61,64 +61,36 @@ func NewSessionService(cookieName string) SessionService {
 // NATS consumer service
 
 type consumerService struct {
-	id   string
-	name string
+	cns    jetstream.Consumer
+	cnsCtx jetstream.ConsumeContext
 
-	csm    jetstream.Consumer
-	msgItr jetstream.MessagesContext
-
-	// OnReceive func(data []byte, ack func() error)
-	OnReceive func(msg jetstream.Msg)
-}
-
-func (srv *consumerService) Id() string {
-	return srv.id
-}
-
-func (srv *consumerService) Name() string {
-	return srv.name
+	Consume func(msg jetstream.Msg)
 }
 
 func (srv *consumerService) Stop() {
-	srv.msgItr.Stop()
+	srv.cnsCtx.Stop()
 }
 
 // msgConsumerSrvEndpoint
 
 func (srv *consumerService) Start(_ context.Context) error {
-	if srv.OnReceive == nil {
+	if srv.Consume == nil {
 		return errors.New("'OnMessage' is nil")
 	}
 
-	if srv.csm == nil {
+	if srv.cns == nil {
 		return errors.New("consumer is nil")
 	}
 
-	if srv.msgItr != nil {
-		return errors.New("message iterator is not nil")
-	}
-
-	msgItr, err := srv.csm.Messages()
+	cnsCtx, err := srv.cns.Consume(func(msg jetstream.Msg) {
+		srv.Consume(msg)
+	})
 
 	if err != nil {
-		return nil
+		return err
 	}
 
-	srv.msgItr = msgItr
-
-	go func(msgItr jetstream.MessagesContext) {
-		for {
-			msg, err := msgItr.Next()
-
-			log.Printf("Get message from iterator\n")
-
-			if err != nil {
-				break
-			}
-
-			srv.OnReceive(msg)
-		}
-	}(msgItr)
+	srv.cnsCtx = cnsCtx
 
 	return nil
 }
@@ -159,9 +131,7 @@ func (srv *consumerFactoryService) get(ctx context.Context, name string, id stri
 	}
 
 	csmSrv := consumerService{
-		id:         id,
-		name:       name,
-		csm:        csm,
+		cns: csm,
 	}
 
 	return csmSrv, nil
@@ -193,6 +163,8 @@ func (srv *consumerFactoryService) createOrUpdateStream(ctx context.Context, nam
 		// if stream already exists - just update it
 		info, err := stream.Info(ctx)
 
+		log.Printf("Existing stream '%s', subjects: '%s'", name, info.Config.Subjects)
+
 		if err != nil {
 			return nil, err
 		}
@@ -221,6 +193,7 @@ func (srv *consumerFactoryService) createOrUpdateConsumer(ctx context.Context, i
 
 	if errors.Is(err, jetstream.ErrConsumerNotFound) {
 		cns, err = stream.CreateConsumer(ctx, jetstream.ConsumerConfig{
+			Durable:       id,
 			Name:          id,
 			AckPolicy:     jetstream.AckAllPolicy,
 			FilterSubject: id,
@@ -229,6 +202,8 @@ func (srv *consumerFactoryService) createOrUpdateConsumer(ctx context.Context, i
 		if err != nil {
 			return nil, err
 		}
+
+		log.Printf("Create consumer '%s'", id)
 	} else if err != nil {
 		return nil, err
 	}
@@ -244,4 +219,10 @@ func NewConsumerFactoryService(js jetstream.JetStream) *consumerFactoryService {
 	}
 }
 
-type natsConnectorService struct {}
+type natsConnectorService struct{}
+
+func (srv *natsConnectorService) Connect() {
+	go func() {
+
+	}()
+}

@@ -16,16 +16,16 @@ func main() {
 	assetsPath, ok := os.LookupEnv("ANONIMUS_ASSETS_PATH")
 
 	if !ok {
-		log.Panic("Unknown assets directory path")
+		log.Panicf("Unknown assets directory path")
 	}
 
-	config, settingsPath, err := anonimus.ReadConfig("config.json", assetsPath)
+	cfg, cfgPath, err := anonimus.ReadConfig("config.json", assetsPath)
 
 	if err != nil {
 		log.Panicf("Read config: %s\n", err.Error())
 	}
 
-	log.Printf("Read config: %s\n", settingsPath)
+	log.Printf("Read config: %s\n", cfgPath)
 
 	// 0. NATS
 	natsCnc, err := nats.Connect(nats.DefaultURL)
@@ -48,14 +48,14 @@ func main() {
 	ouRegistry := anonimus.NewRegistry[string, anonimus.OnlineUser]()
 
 	messageHandler := anonimus.MessageHandler{
-		Config:          config,
+		Cfg:             cfg,
 		ConsumerFactory: consumerSrv,
 		Session:         sessionSrv,
 		OnlineUsers:     ouRegistry,
 		Publisher:       natsJs,
 	}
 	onlineUserHandler := anonimus.OnlineUserHandler{
-		Config:      config,
+		Cfg:         cfg,
 		Session:     sessionSrv,
 		OnlineUsers: ouRegistry,
 	}
@@ -67,7 +67,7 @@ func main() {
 
 	server := http.Server{
 		Handler: router,
-		Addr:    config.Addr,
+		Addr:    cfg.Addr,
 	}
 
 	// 3. Start server

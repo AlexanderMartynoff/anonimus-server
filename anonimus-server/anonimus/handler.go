@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"slices"
 	"strconv"
 	"sync"
 
@@ -28,13 +27,14 @@ type OnlineUser struct {
 	Name     string `json:"name"`
 	DeviceId string `json:"deviceId"`
 
-	wsMtx    *sync.Mutex      `json:"-"`
-	wsCnc    *websocket.Conn  `json:"-"`
-	consumer *consumerService `json:"-"`
+	// TODO: Replace `cnsuMtx` with chanel?
+	cnsuSrv  *consumerService `json:"-"`
+	wsc      *websocket.Conn  `json:"-"`
+	wscWrMtx *sync.Mutex      `json:"-"`
 }
 
 type MessageHandler struct {
-	Config          Config
+	Cfg             Config
 	Session         SessionService
 	ConsumerFactory ConsumerFactoryService
 	Publisher       PublisherService
@@ -54,43 +54,35 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wsCnc, err := Upgrader.Upgrade(w, r, http.Header{
-		"X-Anonimus-Server-Version": {hr.Config.Version},
+	wsc, err := Upgrader.Upgrade(w, r, http.Header{
+		"X-Anonimus-Server-Version": {hr.Cfg.Version},
 	})
 
 	if err != nil {
-		log.Printf("Websocket connection upgrade error: %s\n", err.Error())
+		log.Printf("Websocket upgrade error: %s\n", err.Error())
 	}
-
-	defer func() {
-		err := wsCnc.Close()
-
-		if err != nil {
-			log.Printf("Websocket closing error: %s\n", err.Error())
-		}
-	}()
 
 	ctx := context.Background()
 
-	consumer, err := hr.ConsumerFactory.Get(ctx, user.Id, user.DeviceId)
+	cnsuSrv, err := hr.ConsumerFactory.Get(ctx, user.Id, user.DeviceId)
 
 	if err != nil {
 		log.Printf("Register consumer error: %s. Close connection\n", err.Error())
 		return
 	}
 
-	consumer.OnReceive = func(msg jetstream.Msg) {
-		hr.onReceive(ctx, user, msg, wsCnc)
+	wscWrMtx := sync.Mutex{}
+
+	cnsuSrv.Consume = func(msg jetstream.Msg) {
+		hr.onConsume(ctx, user, msg, wsc, &wscWrMtx)
 	}
 
-	err = consumer.Start(ctx)
+	err = cnsuSrv.Start(ctx)
 
 	if err != nil {
 		log.Printf("Start consumer error: %s\n", err.Error())
 		return
 	}
-
-	defer consumer.Stop()
 
 	hr.OnlineUsers.Set(user.DeviceId, OnlineUser{
 		Id:       user.Id,
@@ -98,23 +90,30 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		Name:     user.Name,
 
 		// TODO: Refactring?
-		wsMtx:    &sync.Mutex{},
-		wsCnc:    wsCnc,
-		consumer: &consumer,
+		cnsuSrv:  &cnsuSrv,
+		wscWrMtx: &wscWrMtx,
+		wsc:      wsc,
 	})
 
-	defer hr.OnlineUsers.Delete(user.DeviceId)
-
-	hr.distribute("event", Event{
+	hr.sendToOnlineUsers("event", Event{
 		Name: "connect",
 	})
 
-	defer hr.distribute("event", Event{
-		Name: "disconnect",
-	})
+	defer func() {
+		log.Printf("Close handler '%s:%s'", user.DeviceId, user.Name)
+
+		cnsuSrv.Stop()
+		_ = wsc.Close()
+
+		hr.OnlineUsers.Delete(user.DeviceId)
+
+		hr.sendToOnlineUsers("event", Event{
+			Name: "disconnect",
+		})
+	}()
 
 	for {
-		msgType, msgData, err := wsCnc.ReadMessage()
+		msgType, msgData, err := wsc.ReadMessage()
 
 		if err != nil {
 			log.Printf("websocket reading error: %s\n", err.Error())
@@ -123,22 +122,19 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 
 		switch msgType {
 
-		case websocket.PingMessage:
-			wsCnc.WriteMessage(websocket.PongMessage, []byte("Pong"))
-
-		case websocket.PongMessage:
-			wsCnc.WriteMessage(websocket.PingMessage, []byte("Ping"))
+		case websocket.CloseMessage:
+			return
 
 		case websocket.TextMessage:
-			var op Operation
+			var cmd Command
 
-			err := json.Unmarshal(msgData, &op)
+			err := json.Unmarshal(msgData, &cmd)
 
 			if err != nil {
 				log.Printf("Message parsing error: '%s'", err.Error())
 			}
 
-			hr.onSend(ctx, user, op.Type, op.Message)
+			hr.onPublish(ctx, user, cmd.Type, cmd.Message)
 
 		default:
 			log.Printf("Unknown message type: '%d'", msgType)
@@ -146,7 +142,7 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (hr *MessageHandler) onSend(ctx context.Context, user User, msgType string, msgData []byte) {
+func (hr *MessageHandler) onPublish(ctx context.Context, user User, msgType string, msgData []byte) {
 	switch msgType {
 
 	case "message":
@@ -171,9 +167,9 @@ func (hr *MessageHandler) onSend(ctx context.Context, user User, msgType string,
 					"Id":               []string{msg.Id},
 					"Chat-Id":          []string{msg.Chat},
 					"Sender-Id":        []string{user.Id},
+					"Sender-Name":      []string{user.Name},
 					"Sender-Device-Id": []string{user.DeviceId},
-					// Non string fields
-					"Sequence": []string{strconv.Itoa(msg.Sequence)},
+					"Sequence":         []string{strconv.Itoa(msg.Sequence)},
 				},
 				Subject: subject,
 				Data:    []byte(msg.Text),
@@ -188,7 +184,7 @@ func (hr *MessageHandler) onSend(ctx context.Context, user User, msgType string,
 	}
 }
 
-func (hr *MessageHandler) onReceive(_ context.Context, user User, msg jetstream.Msg, wsCnc *websocket.Conn) {
+func (hr *MessageHandler) onConsume(_ context.Context, user User, msg jetstream.Msg, wsc *websocket.Conn, wscWrMtx *sync.Mutex) {
 	ack := func() {
 		err := msg.Ack()
 
@@ -220,7 +216,7 @@ func (hr *MessageHandler) onReceive(_ context.Context, user User, msg jetstream.
 		Chat:     headers.Get("Chat-Id"),
 		Sequence: sequence,
 		Text:     string(msg.Data()),
-	}, wsCnc)
+	}, wsc, wscWrMtx)
 
 	if err == nil {
 		ack()
@@ -229,26 +225,28 @@ func (hr *MessageHandler) onReceive(_ context.Context, user User, msg jetstream.
 	}
 }
 
-func (hr *MessageHandler) send(oprType string, message any, wsCnc *websocket.Conn) error {
+func (hr *MessageHandler) send(oprType string, message any, wsc *websocket.Conn, wscWrMtx *sync.Mutex) error {
 	v, err := json.Marshal(message)
 
 	if err != nil {
 		return err
 	}
 
-	op := Operation{
+	cmd := Command{
 		Source:  "server",
 		Type:    oprType,
 		Message: v,
 	}
 
-	v, err = json.Marshal(op)
+	v, err = json.Marshal(cmd)
 
 	if err != nil {
 		return err
 	}
 
-	err = wsCnc.WriteMessage(websocket.TextMessage, v)
+	wscWrMtx.Lock()
+	err = wsc.WriteMessage(websocket.TextMessage, v)
+	wscWrMtx.Unlock()
 
 	if err != nil {
 		return err
@@ -257,38 +255,24 @@ func (hr *MessageHandler) send(oprType string, message any, wsCnc *websocket.Con
 	return nil
 }
 
-func (hr *MessageHandler) distribute(oprType string, message any) {
-	for _, user := range hr.OnlineUsers.List() {
-		// TODO: Replace lock with chanel?
-		user.wsMtx.Lock()
-		err := hr.send(oprType, message, user.wsCnc)
-		user.wsMtx.Unlock()
+func (hr *MessageHandler) sendToOnlineUsers(oprType string, message any) {
+	for _, olUser := range hr.OnlineUsers.List() {
+		err := hr.send(oprType, message, olUser.wsc, olUser.wscWrMtx)
 
 		if err != nil {
-			log.Printf("Notify sending error: '%s'\n", err.Error())
+			log.Printf("Broadcat sending error: '%s'\n", err.Error())
 		}
 	}
 }
 
 type OnlineUserHandler struct {
 	Session     SessionService
-	Config      Config
+	Cfg         Config
 	OnlineUsers Registry[string, OnlineUser]
 }
 
 func (hr *OnlineUserHandler) List(w http.ResponseWriter, r *http.Request) {
-	user, err := hr.Session.GetUser(r)
-
-	if err != nil {
-		log.Printf("Session parse error: %s\n", err.Error())
-		return
-	}
-
-	sls := slices.DeleteFunc(hr.OnlineUsers.List(), func(onlUser OnlineUser) bool {
-		return onlUser.Id == user.Id
-	})
-
-	v, err := json.Marshal(sls)
+	v, err := json.Marshal(hr.OnlineUsers.List())
 
 	if err != nil {
 		fmt.Println(err.Error())

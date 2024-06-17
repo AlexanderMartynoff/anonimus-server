@@ -12,7 +12,7 @@
 
         <q-item-section>
           <q-item-label>{{onlineUser.name}}</q-item-label>
-          <q-item-label caption>{{onlineUser.deviceId}}</q-item-label>
+          <q-item-label caption>Device: {{tail(onlineUser.deviceId)}}</q-item-label>
         </q-item-section>
       </q-item>
 
@@ -21,6 +21,7 @@
 </template>
 
 <script>
+import { tail } from '../../api/functions.js'
 
 export default {
   name: 'OnlineUserList',
@@ -34,6 +35,7 @@ export default {
 
   setup(_, ctx) {
     return {
+      tail,
       onSelect(onlineUser) {
         ctx.emit('select', onlineUser)
       },

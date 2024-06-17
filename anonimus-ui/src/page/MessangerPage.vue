@@ -58,7 +58,7 @@ export default {
     const store = useStore()
 
     const leftBar = ref(quasar.platform.is.desktop)
-    const limit = ref(50)
+    const limit = ref(15)
 
     const chats = useLiveQuery(() => database.chats.toArray())
     const chat = computed(() => chats.value.filter(chat => chat.id == props.chat).pop(0) || {id: 'nil'})
