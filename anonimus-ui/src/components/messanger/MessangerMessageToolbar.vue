@@ -7,7 +7,6 @@
 
 <script>
 import { ref, unref, onMounted, onBeforeUnmount } from 'vue'
-import { v4 } from 'uuid'
 
 
 export default {
@@ -34,13 +33,9 @@ export default {
         return
       }
 
-      ctx.emit(
-        'send',
-        {
-          id: v4(),
-          text: text.value,
-        }
-      )
+      ctx.emit('send', {
+        text: text.value,
+      })
 
       text.value = null
     }

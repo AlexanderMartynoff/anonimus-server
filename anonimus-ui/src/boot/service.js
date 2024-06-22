@@ -19,8 +19,8 @@ export default async ({ app, router, store }) => {
   const database = new Dexie('database')
 
   database.version(1).stores({
-    users: '++_id',
-    messages: '++_id, sequence, chat',
+    users: 'id',
+    messages: 'id, [chat+sequence], text',
     chats: 'id, name',
   })
 

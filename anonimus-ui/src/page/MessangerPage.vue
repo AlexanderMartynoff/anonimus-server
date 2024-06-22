@@ -29,6 +29,8 @@ import { ref, toRaw, computed, inject, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from '../stores/store.js'
 import { useLiveQuery } from '../api/vue.js'
+import { v4 } from 'uuid'
+
 import MessangerChat from '../components/messanger/MessangerChat.vue'
 import MessangerMessageToolbar from '../components/messanger/MessangerMessageToolbar.vue'
 import MessangerChatList from '../components/messanger/MessangerChatList.vue'
@@ -64,13 +66,13 @@ export default {
     const chat = computed(() => chats.value.filter(chat => chat.id == props.chat).pop(0) || {id: 'nil'})
 
     const messages = useLiveQuery(() => {
-      return database.messages
-        .orderBy('sequence')
-        .filter(message => message.chat == chat.value.id)
+      return database.messages.where({chat: chat.value.id})
         .reverse()
         .limit(limit.value)
         .toArray()
-        .then(messages => messages.reverse())
+        .then(messages => {
+          return messages.reverse()
+        })
     }, {
       depends: [chat, limit],
     })
@@ -83,24 +85,27 @@ export default {
       })
     }, {immediate: true})
 
-    async function onBtnSendClick(message) {
-      const sequence = await database.messages.where('chat')
-        .equals(chat.value.id)
-        .limit(1)
-        .reverse()
-        .sortBy('sequence')
-        .then(messages => messages.pop(0)?.sequence || 0) + 1
+    async function onBtnSendClick({text}) {
+      database.transaction('rw', database.messages, async () => {
+        let sequence = await database.messages.where({chat: chat.value.id})
+          .last()
+          .then(message => (message?.sequence || 0) + 1)
 
-      Object.assign(message, {
-        sequence,
-        chat: chat.value.id,
-        chatSubjects: chat.value.users.map(user => user.deviceId),
-        senderDeviceId: store.user.deviceId,
-        senderId: store.user.id,
-        senderName: store.user.name,
-      })
+        const message = {
+          id: v4(),
+          sequence,
+          text,
 
-      await database.messages.add(message).then(() => {
+          chat: chat.value.id,
+          chatSubjects: chat.value.users.map(user => user.deviceId),
+
+          senderDeviceId: store.user.deviceId,
+          senderId: store.user.id,
+          senderName: store.user.name,
+        }
+
+        await database.messages.add(message)
+
         websocket.push({
           type: 'message',
           message,

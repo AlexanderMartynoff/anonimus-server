@@ -1,9 +1,9 @@
 <template>
   <div class="q-pa-md messanger__writer messanger__writer--responsive">
     <q-infinite-scroll @load="onScrollTop" reverse>
-      <q-chat-message :name="message.senderName" avatar="/static/user.png" stamp="1 minut ago`" :sent="message.senderDeviceId == user.deviceId" text-color="white" bg-color="primary" v-for="message in messages">
+      <q-chat-message :name="message.senderName" avatar="/static/user.png" stamp="1 minut ago" :sent="message.senderDeviceId == user.deviceId" text-color="white" bg-color="primary" v-for="message in messages">
         <div class="messanger__message text-caption">
-          {{tail(message.id)}}
+          {{tail(message.id)}} | {{message.sequence}}
         </div>
         <div class="messanger__message">
           {{message.text}}
