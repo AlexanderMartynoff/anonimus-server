@@ -28,11 +28,22 @@ func main() {
 	log.Printf("Read config: %s\n", cfgPath)
 
 	// 0. NATS
-	natsCnc, err := nats.Connect(nats.DefaultURL)
+	natsCnc, _ := nats.Connect(nats.DefaultURL, func(opts *nats.Options) error {
+		opts.RetryOnFailedConnect = true
 
-	if err != nil {
-		log.Panicf("NATS connection: %s\n", err.Error())
-	}
+		opts.DisconnectedErrCB = func(_ *nats.Conn, err error) {
+			log.Printf("NATS disconnected\n")
+		}
+
+		opts.ConnectedCB = func(_ *nats.Conn) {
+			log.Printf("NATS connected\n")
+		}
+
+		opts.ReconnectedCB = func(_ *nats.Conn) {
+			log.Printf("NATS reconnect\n")
+		}
+		return nil
+	})
 
 	natsJs, err := jetstream.New(natsCnc)
 
@@ -40,9 +51,8 @@ func main() {
 		log.Panicf("NATS jetstream creation: %s\n", err.Error())
 	}
 
-	log.Printf("NATS connection on: %s\n", nats.DefaultURL)
-
 	// 1. HTTP Handlers
+	// nats.NewEncodedConn
 	consumerSrv := anonimus.NewConsumerFactoryService(natsJs)
 	sessionSrv := anonimus.NewSessionService("user")
 	ouRegistry := anonimus.NewRegistry[string, anonimus.OnlineUser]()
@@ -54,6 +64,7 @@ func main() {
 		OnlineUsers:     ouRegistry,
 		Publisher:       natsJs,
 	}
+
 	onlineUserHandler := anonimus.OnlineUserHandler{
 		Cfg:         cfg,
 		Session:     sessionSrv,

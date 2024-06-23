@@ -1,7 +1,7 @@
 <template>
   <div class="q-pa-md">
-    <q-list bordered class="rounded-borders">
-      <q-item-label header>Users</q-item-label>
+    <q-list bordered class="rounded-borders shadow-5">
+      <q-item-label header>Who online?</q-item-label>
 
       <q-item clickable v-ripple v-for="onlineUser in onlineUsers" @click="onSelect(onlineUser)">
         <q-item-section avatar>

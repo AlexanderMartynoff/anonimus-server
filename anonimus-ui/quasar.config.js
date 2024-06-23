@@ -5,14 +5,16 @@ module.exports = configure(function (ctx) {
   return {
     framework: {
       config: {
+        // dark: true,
         screen: {
           bodyClasses: true,
-        }
+        },
       },
       plugins: [
         'LocalStorage',
         'Cookies',
         'Dialog',
+        'Notify',
       ]
     },
     supportTS: false,
@@ -26,7 +28,7 @@ module.exports = configure(function (ctx) {
     build: {
       vueRouterMode: 'history',
 
-      chainWebpack (config) {
+      chainWebpack(config) {
         config.plugin('define')
           .tap(definitions => {
             let [definition, ..._] = definitions

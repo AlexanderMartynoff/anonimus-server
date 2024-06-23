@@ -8,7 +8,6 @@
 <script>
 import { ref, unref, onMounted, onBeforeUnmount } from 'vue'
 
-
 export default {
   name: 'MessangerMessageToolbar',
   emits: ['send'],

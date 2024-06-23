@@ -1,6 +1,6 @@
 <template>
   <q-layout view="hHh lpr fFf">
-    <q-header>
+    <q-header :elevated="true">
       <header-toolbar>
         <q-btn flat icon="chat" @click="onChatClick()"/>
       </header-toolbar>

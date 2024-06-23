@@ -95,6 +95,7 @@ func (srv *consumerService) Start(_ context.Context) error {
 	return nil
 }
 
+// TODO: Replace with just `CreateConsumer`, `CreateStream`?
 type consumerFactoryService struct {
 	js  jetstream.JetStream
 	mtx RegistryMutex[string]
@@ -196,6 +197,7 @@ func (srv *consumerFactoryService) createOrUpdateConsumer(ctx context.Context, i
 			Durable:       id,
 			Name:          id,
 			AckPolicy:     jetstream.AckAllPolicy,
+			DeliverPolicy: jetstream.DeliverAllPolicy,
 			FilterSubject: id,
 		})
 
@@ -217,12 +219,4 @@ func NewConsumerFactoryService(js jetstream.JetStream) *consumerFactoryService {
 		js:  js,
 		mtx: NewRegistryMutex[string](),
 	}
-}
-
-type natsConnectorService struct{}
-
-func (srv *natsConnectorService) Connect() {
-	go func() {
-
-	}()
 }

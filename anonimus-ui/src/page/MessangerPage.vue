@@ -1,14 +1,14 @@
 <template>
-  <q-layout view="lHh Lpr lFf" class="bg-white">
-    <q-header>
+  <q-layout view="lHh Lpr lFf">
+    <q-header elevated>
       <header-toolbar>
         <q-btn flat icon="menu" @click="onBtnMenuClick"/>
         <q-btn flat icon="home" @click="onHomeClick"/>
       </header-toolbar>
     </q-header>
 
-    <q-drawer bordered side="left" :breakpoint="690" v-model="leftBar">
-      <messanger-chat-list @select="onChatSelect" @delete="onChatDelete" :chats="chats" :active-chat-name="chat.id"/>
+    <q-drawer bordered side="left" :breakpoint="690" v-model="showLeftBar" elevated>
+      <messanger-chat-list @select="onChatSelect" @delete="onChatDelete" :chats="chats" :online-users="onlineUsers" :active-chat-name="chat.id"/>
     </q-drawer>
 
     <q-page-container>
@@ -59,8 +59,9 @@ export default {
     const quasar = useQuasar()
     const store = useStore()
 
-    const leftBar = ref(quasar.platform.is.desktop)
-    const limit = ref(15)
+    const showLeftBar = ref(quasar.platform.is.desktop)
+
+    const limit = ref(50)
 
     const chats = useLiveQuery(() => database.chats.toArray())
     const chat = computed(() => chats.value.filter(chat => chat.id == props.chat).pop(0) || {id: 'nil'})
@@ -78,6 +79,7 @@ export default {
     })
 
     const user = computed(() => store.user)
+    const onlineUsers = computed(() => store.onlineUsers)
 
     watch(messages, () => {
       nextTick(() => {
@@ -114,15 +116,16 @@ export default {
     }
 
     return {
-      leftBar,
+      showLeftBar,
       messages,
       chat,
       chats,
       user,
+      onlineUsers,
 
       onChatScrollTop(index, onDone) {
         // limit.value += 10
-        onDone()
+        // onDone()
       },
 
       onHomeClick() {
@@ -142,7 +145,7 @@ export default {
       },
 
       onBtnMenuClick() {
-        leftBar.value = !leftBar.value
+        showLeftBar.value = !showLeftBar.value
       },
 
       onBtnSendClick,

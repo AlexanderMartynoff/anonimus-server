@@ -17,12 +17,13 @@
         <div>
           {{chat.name}}
         </div>
-
-        <div class="text-caption">
-          {{tail(chat.id)}}
-        </div>
       </q-item-section>
 
+      <q-item-section side>
+        <q-icon name="circle" color="green" size="1em" v-if="chat.isOnline"/>
+        <q-icon name="circle" color="red" size="1em" v-else/>
+      </q-item-section>
+    
       <q-item-section side>
         <q-btn flat dense round icon="delete" @click.stop="onDeleteClick(chat)"/>
       </q-item-section>
@@ -45,7 +46,6 @@
 
 <script>
 import { computed, ref } from 'vue'
-import { tail } from '../../api/functions.js'
 
 export default {
   name: 'MessangerChatList',
@@ -53,6 +53,9 @@ export default {
   props: {
     chats: {
       type: Object,
+    },
+    onlineUsers: {
+      type: Array,
     },
     activeChatName: {
       type: String,
@@ -64,9 +67,17 @@ export default {
     const confirm = ref(false)
     const deletation = ref(null)
 
+    const chats = computed(() => props.chats.map(chat => {
+      const onlineIds = props.onlineUsers.map(olUser => olUser.id)
+      return {
+        ...chat,
+        isOnline: chat.users.every(user => onlineIds.includes(user.id))
+      }
+    }))
+
     return {
+      chats,
       deletation,
-      tail,
       confirm,
       tab,
 

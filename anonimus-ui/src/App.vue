@@ -3,6 +3,7 @@
 </template>
 
 <script>
+import { Notify } from 'quasar'
 import { onUnmounted, onMounted, inject, watch } from 'vue'
 import { useStore } from './stores/store.js'
 
@@ -16,7 +17,7 @@ export default {
 
     const store = useStore()
 
-    watch(store.user, (user) => {
+    watch(store.user, user => {
       websocket.stop(() => {
         if (user.id) {
           websocket.start()
@@ -29,6 +30,14 @@ export default {
     }
 
     const onMessageIncome = ({message}) => {
+      Notify.create({
+        message: message.text,
+        caption: message.senderName,
+        icon: 'mail',
+        position: 'top-right',
+        multiLine: true,
+      })
+
       database.messages.put(message)
     }
 

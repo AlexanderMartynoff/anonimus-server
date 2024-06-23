@@ -28,16 +28,21 @@ type Message struct {
 	SenderName     string `json:"senderName"`
 	SenderId       string `json:"senderId"`
 	SenderDeviceId string `json:"senderDeviceId"`
+	ParentId       string `json:"parentId"`
 }
 
-type BroadcastMessage struct {
-	Message
+type PublishingMessage struct {
 	ChatSubjects []string `json:"chatSubjects"`
+	Message
+}
+
+type ConsumingMessage struct {
+	Message
 }
 
 type Command struct {
-	Source  string          `json:"source"`
-	Time    float32         `json:"time"`
-	Type    string          `json:"type"`
-	Message json.RawMessage `json:"message"`
+	Source string          `json:"source"`
+	Time   int64           `json:"time"`
+	Type   string          `json:"type"`
+	Data   json.RawMessage `json:"message"`
 }
