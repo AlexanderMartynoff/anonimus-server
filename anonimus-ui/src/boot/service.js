@@ -4,6 +4,7 @@ import { WebSocketQueue } from '../api/websocket.js'
 
 
 export default async ({ app, router, store }) => {
+  const DB_VERSION = 1
   // WebSocket
   const websocket = new WebSocketQueue(`ws://${location.host}/api/serve`)
 
@@ -18,7 +19,7 @@ export default async ({ app, router, store }) => {
   // Dexie
   const database = new Dexie('database')
 
-  database.version(1).stores({
+  database.version(DB_VERSION).stores({
     users: 'id',
     messages: 'id, [chat+sequence], text',
     chats: 'id, name',

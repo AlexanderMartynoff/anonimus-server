@@ -10,6 +10,6 @@
                 "ANONIMUS_ASSETS_PATH": "/Users/alexander/Projects/anonimus/anonimus-server/assets",
                 "ANONIMUS_SESSION_COOKIE_NAME": "session",
             }
-        }
+        },
     ]
 }

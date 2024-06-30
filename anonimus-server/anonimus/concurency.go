@@ -4,12 +4,12 @@ import "sync"
 
 
 // RegistryMutex
-type RegistryMutex[K comparable] struct {
-	rgr Registry[K, *sync.Mutex]
+type RegistryMutex struct {
+	rg Registry[string, *sync.Mutex]
 }
 
-func (rmx *RegistryMutex[K]) Lock(k K) func() {
-	_, mx := rmx.rgr.GetOrSet(k, &sync.Mutex{})
+func (rmx *RegistryMutex) Lock(k string) func() {
+	_, mx := rmx.rg.GetOrSet(k, &sync.Mutex{})
 
 	mx.Lock()
 
@@ -18,9 +18,23 @@ func (rmx *RegistryMutex[K]) Lock(k K) func() {
 	}
 }
 
-func NewRegistryMutex[K comparable]() RegistryMutex[K] {
-	return RegistryMutex[K]{
-		rgr: NewRegistry[K, *sync.Mutex](),
+func (rmx *RegistryMutex) TryLock(k string) (bool, func()) {
+	_, mx := rmx.rg.GetOrSet(k, &sync.Mutex{})
+
+	ok := mx.TryLock()
+
+	if ok {
+		return ok, func ()  {
+			mx.Unlock()
+		}
+	}
+
+	return ok, nil
+}
+
+func NewRegistryMutex() RegistryMutex {
+	return RegistryMutex{
+		rg: NewRegistry[string, *sync.Mutex](),
 	}
 }
 
@@ -30,60 +44,60 @@ type Registry[K comparable, V any] struct {
 	kv map[K]V
 }
 
-func (rgr *Registry[K, V]) Get(k K) (V, bool) {
-	rgr.mx.RLock()
-	defer rgr.mx.RUnlock()
+func (rg *Registry[K, V]) Get(k K) (V, bool) {
+	rg.mx.RLock()
+	defer rg.mx.RUnlock()
 
-	v, ok := rgr.kv[k]
+	v, ok := rg.kv[k]
 
 	return v, ok
 }
 
-func (rgr *Registry[K, V]) Set(k K, v V) {
-	rgr.mx.Lock()
-	defer rgr.mx.Unlock()
+func (rg *Registry[K, V]) Set(k K, v V) {
+	rg.mx.Lock()
+	defer rg.mx.Unlock()
 
-	rgr.kv[k] = v
+	rg.kv[k] = v
 }
 
-func (rgr *Registry[K, V]) GetOrSet(k K, v V) (bool, V) {
-	rgr.mx.Lock()
-	defer rgr.mx.Unlock()
+func (rg *Registry[K, V]) GetOrSet(k K, v V) (bool, V) {
+	rg.mx.Lock()
+	defer rg.mx.Unlock()
 
-	if v, ok := rgr.kv[k]; ok {
+	if v, ok := rg.kv[k]; ok {
 		return ok, v
 	}
 
-	rgr.kv[k] = v
+	rg.kv[k] = v
 
 	return false, v
 }
 
-func (rgr *Registry[K, V]) Delete(k K) {
-	rgr.mx.Lock()
-	defer rgr.mx.Unlock()
+func (rg *Registry[K, V]) Delete(k K) {
+	rg.mx.Lock()
+	defer rg.mx.Unlock()
 
-	delete(rgr.kv, k)
+	delete(rg.kv, k)
 }
 
-func (rgr *Registry[K, V]) List() []V {
-	rgr.mx.RLock()
-	defer rgr.mx.RUnlock()
+func (rg *Registry[K, V]) List() []V {
+	rg.mx.RLock()
+	defer rg.mx.RUnlock()
 
-	list := make([]V, 0, rgr.Size())
+	list := make([]V, 0, rg.Size())
 
-	for _, v := range rgr.kv {
+	for _, v := range rg.kv {
 		list = append(list, v)
 	}
 
 	return list
 }
 
-func (rgr *Registry[K, V]) Size() int {
-	rgr.mx.RLock()
-	defer rgr.mx.RUnlock()
+func (rg *Registry[K, V]) Size() int {
+	rg.mx.RLock()
+	defer rg.mx.RUnlock()
 
-	return len(rgr.kv)
+	return len(rg.kv)
 }
 
 func NewRegistry[K comparable, V any]() Registry[K, V] {

@@ -29,7 +29,7 @@ type OnlineUser struct {
 
 	// TODO: Replace `wscMtx` with chanel?
 	csSrv  *consumerService `json:"-"`
-	wsc    *websocket.Conn  `json:"-"`
+	wsCn   *websocket.Conn  `json:"-"`
 	wscMtx *sync.Mutex      `json:"-"`
 }
 
@@ -54,7 +54,7 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wsc, err := Upgrader.Upgrade(w, r, http.Header{
+	wsCn, err := Upgrader.Upgrade(w, r, http.Header{
 		"X-Anonimus-Server-Version": {hr.Cfg.Version},
 	})
 
@@ -74,7 +74,7 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	wscMtx := sync.Mutex{}
 
 	csSrv.Consume = func(msg jetstream.Msg) {
-		hr.onConsume(ctx, msg, wsc, &wscMtx)
+		hr.onConsume(ctx, msg, wsCn, &wscMtx)
 	}
 
 	err = csSrv.Start(ctx)
@@ -92,7 +92,7 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		// TODO: Refactring?
 		csSrv:  &csSrv,
 		wscMtx: &wscMtx,
-		wsc:    wsc,
+		wsCn:   wsCn,
 	})
 
 	hr.sendToOnlineUsers("event", Event{
@@ -103,7 +103,7 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Close handler '%s:%s'", user.DeviceId, user.Name)
 
 		csSrv.Stop()
-		_ = wsc.Close()
+		wsCn.Close()
 
 		hr.OnlineUsers.Delete(user.DeviceId)
 
@@ -112,8 +112,10 @@ func (hr *MessageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		})
 	}()
 
+	wsCn.WriteMessage(websocket.PingMessage, []byte{})
+
 	for {
-		msgType, msgData, err := wsc.ReadMessage()
+		msgType, msgData, err := wsCn.ReadMessage()
 
 		if err != nil {
 			log.Printf("websocket reading error: %s\n", err.Error())
@@ -196,7 +198,7 @@ func (hr *MessageHandler) onPublish(ctx context.Context, msgType string, pbData 
 	}
 }
 
-func (hr *MessageHandler) onConsume(_ context.Context, jsMsg jetstream.Msg, wsc *websocket.Conn, wscMtx *sync.Mutex) {
+func (hr *MessageHandler) onConsume(_ context.Context, jsMsg jetstream.Msg, wsCn *websocket.Conn, wscMtx *sync.Mutex) {
 	ack := func() {
 		err := jsMsg.Ack()
 
@@ -214,7 +216,7 @@ func (hr *MessageHandler) onConsume(_ context.Context, jsMsg jetstream.Msg, wsc 
 		return
 	}
 
-	err = hr.send("message", msg, wsc, wscMtx)
+	err = hr.send("message", msg, wsCn, wscMtx)
 
 	if err == nil {
 		ack()
@@ -223,7 +225,7 @@ func (hr *MessageHandler) onConsume(_ context.Context, jsMsg jetstream.Msg, wsc 
 	}
 }
 
-func (hr *MessageHandler) send(cmdType string, message any, wsc *websocket.Conn, wscMtx *sync.Mutex) error {
+func (hr *MessageHandler) send(cmdType string, message any, wsCn *websocket.Conn, wscMtx *sync.Mutex) error {
 	v, err := json.Marshal(message)
 
 	if err != nil {
@@ -231,9 +233,9 @@ func (hr *MessageHandler) send(cmdType string, message any, wsc *websocket.Conn,
 	}
 
 	cmd := Command{
-		Type:   cmdType,
-		Time:   time.Now().Unix(),
-		Data:   v,
+		Type: cmdType,
+		Time: time.Now().Unix(),
+		Data: v,
 	}
 
 	v, err = json.Marshal(cmd)
@@ -243,7 +245,7 @@ func (hr *MessageHandler) send(cmdType string, message any, wsc *websocket.Conn,
 	}
 
 	wscMtx.Lock()
-	err = wsc.WriteMessage(websocket.TextMessage, v)
+	err = wsCn.WriteMessage(websocket.TextMessage, v)
 	wscMtx.Unlock()
 
 	if err != nil {
@@ -255,7 +257,7 @@ func (hr *MessageHandler) send(cmdType string, message any, wsc *websocket.Conn,
 
 func (hr *MessageHandler) sendToOnlineUsers(oprType string, message any) {
 	for _, olUser := range hr.OnlineUsers.List() {
-		err := hr.send(oprType, message, olUser.wsc, olUser.wscMtx)
+		err := hr.send(oprType, message, olUser.wsCn, olUser.wscMtx)
 
 		if err != nil {
 			log.Printf("Broadcat sending error: '%s'\n", err.Error())

@@ -98,7 +98,7 @@ func (srv *consumerService) Start(_ context.Context) error {
 // TODO: Replace with just `CreateConsumer`, `CreateStream`?
 type consumerFactoryService struct {
 	js  jetstream.JetStream
-	mtx RegistryMutex[string]
+	mtx RegistryMutex
 }
 
 func (srv *consumerFactoryService) Configure() error {
@@ -217,6 +217,6 @@ func (srv *consumerFactoryService) createOrUpdateConsumer(ctx context.Context, i
 func NewConsumerFactoryService(js jetstream.JetStream) *consumerFactoryService {
 	return &consumerFactoryService{
 		js:  js,
-		mtx: NewRegistryMutex[string](),
+		mtx: NewRegistryMutex(),
 	}
 }
