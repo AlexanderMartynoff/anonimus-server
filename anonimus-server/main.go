@@ -32,15 +32,15 @@ func main() {
 		opts.RetryOnFailedConnect = true
 
 		opts.DisconnectedErrCB = func(_ *nats.Conn, err error) {
-			log.Printf("NATS disconnected\n")
+			log.Print("NATS disconnected\n")
 		}
 
 		opts.ConnectedCB = func(_ *nats.Conn) {
-			log.Printf("NATS connected\n")
+			log.Print("NATS connected\n")
 		}
 
 		opts.ReconnectedCB = func(_ *nats.Conn) {
-			log.Printf("NATS reconnect\n")
+			log.Print("NATS reconnect\n")
 		}
 		return nil
 	})
@@ -52,23 +52,27 @@ func main() {
 	}
 
 	// 1. HTTP Handlers
-	// nats.NewEncodedConn
-	consumerSrv := anonimus.NewConsumerFactoryService(natsJs)
+	consumerFactorySrv := anonimus.NewConsumerFactoryService(natsJs)
 	sessionSrv := anonimus.NewSessionService("user")
-	ouRegistry := anonimus.NewRegistry[string, anonimus.OnlineUser]()
+	onlineUsersRegistry := anonimus.NewRegistry[string](func(a, b anonimus.OnlineUser) int {
+		if a.Id > b.Id {
+			return 1
+		}
+		return -1
+	})
 
 	messageHandler := anonimus.MessageHandler{
 		Cfg:             cfg,
-		ConsumerFactory: consumerSrv,
+		ConsumerFactory: consumerFactorySrv,
 		Session:         sessionSrv,
-		OnlineUsers:     ouRegistry,
+		OnlineUsers:     onlineUsersRegistry,
 		Publisher:       natsJs,
 	}
 
 	onlineUserHandler := anonimus.OnlineUserHandler{
 		Cfg:         cfg,
 		Session:     sessionSrv,
-		OnlineUsers: ouRegistry,
+		OnlineUsers: onlineUsersRegistry,
 	}
 
 	router := http.NewServeMux()

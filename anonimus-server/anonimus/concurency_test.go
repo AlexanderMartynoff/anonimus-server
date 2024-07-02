@@ -5,7 +5,9 @@ import "slices"
 
 
 func TestRegistry(t *testing.T) {
-	rg := NewRegistry[string, string]()
+	rg := NewRegistry[string](func(a, b string) int {
+		return 0
+	})
 
 	rg.Set("k1", "v1")
 

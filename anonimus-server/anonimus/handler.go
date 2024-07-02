@@ -256,8 +256,8 @@ func (hr *MessageHandler) send(cmdType string, message any, wsCn *websocket.Conn
 }
 
 func (hr *MessageHandler) sendToOnlineUsers(oprType string, message any) {
-	for _, olUser := range hr.OnlineUsers.List() {
-		err := hr.send(oprType, message, olUser.wsCn, olUser.wscMtx)
+	for _, onlUser := range hr.OnlineUsers.List() {
+		err := hr.send(oprType, message, onlUser.wsCn, onlUser.wscMtx)
 
 		if err != nil {
 			log.Printf("Broadcat sending error: '%s'\n", err.Error())

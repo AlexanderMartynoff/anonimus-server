@@ -1,7 +1,9 @@
 package anonimus
 
-import "sync"
-
+import (
+	"slices"
+	"sync"
+)
 
 // RegistryMutex
 type RegistryMutex struct {
@@ -34,7 +36,9 @@ func (rmx *RegistryMutex) TryLock(k string) (bool, func()) {
 
 func NewRegistryMutex() RegistryMutex {
 	return RegistryMutex{
-		rg: NewRegistry[string, *sync.Mutex](),
+		rg: NewRegistry[string](func(a, b *sync.Mutex) int {
+			return 0
+		}),
 	}
 }
 
@@ -42,6 +46,7 @@ func NewRegistryMutex() RegistryMutex {
 type Registry[K comparable, V any] struct {
 	mx *sync.RWMutex
 	kv map[K]V
+	cmp func(a, b V) int
 }
 
 func (rg *Registry[K, V]) Get(k K) (V, bool) {
@@ -58,6 +63,15 @@ func (rg *Registry[K, V]) Set(k K, v V) {
 	defer rg.mx.Unlock()
 
 	rg.kv[k] = v
+}
+
+func (rg *Registry[K, V]) SetFromMap(kv map[K]V) {
+	rg.mx.Lock()
+	defer rg.mx.Unlock()
+
+	for k, v := range kv {
+		rg.kv[k] = v
+	}
 }
 
 func (rg *Registry[K, V]) GetOrSet(k K, v V) (bool, V) {
@@ -90,7 +104,13 @@ func (rg *Registry[K, V]) List() []V {
 		list = append(list, v)
 	}
 
+	slices.SortFunc(list, rg.cmp)
+
 	return list
+}
+
+func (rg *Registry[K, V]) Map() map[K]V {
+	return rg.kv
 }
 
 func (rg *Registry[K, V]) Size() int {
@@ -100,9 +120,10 @@ func (rg *Registry[K, V]) Size() int {
 	return len(rg.kv)
 }
 
-func NewRegistry[K comparable, V any]() Registry[K, V] {
+func NewRegistry[K comparable, V any](cmp func(a, b V) int) Registry[K, V] {
 	return Registry[K, V]{
 		kv: map[K]V{},
 		mx: &sync.RWMutex{},
+		cmp: cmp,
 	}
 }
